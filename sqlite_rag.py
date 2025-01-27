@@ -9,6 +9,8 @@ from chunking import CustomChunking
 from batch_embedding import AsyncEmbeddingGenerator
 from database_handler import DatabaseHandler
 from csv_writer import CSVWriter
+from result_database import ResultDatabase
+import logging
 from config import (
     SOW_FIELDS_TO_EXTRACT, 
     SOW_POINTS_TO_REMEMBER, 
@@ -270,17 +272,30 @@ class SQLiteOpenAIRAG:
         return await asyncio.gather(*tasks)
 
 async def main():
+    # Set up logging
+    logging.basicConfig(level=logging.INFO)
+    
     # Initialize the chunking system
     chunker = CustomChunking(overlap_words=50)
 
-    doc_type = "MSA"
-    pdf_path = "contract_file/Entrupy.pdf"
+    doc_type = "SOW"
+    pdf_path = "contract_file/Genpact.pdf"
 
     print("-" * 30 + f"Loading {doc_type} document from '{pdf_path}'" + "-" * 30)
+    
+    # Extract the file name from the path
+    file_name = os.path.basename(pdf_path)
     
     # Load and chunk the document
     chunked_docs = chunker.load_documents(pdf_path)
     
+    if not chunked_docs:
+        print(f"Failed to load document: {pdf_path}")
+        sys.exit(1)
+
+    # Initialize the database
+    db = ResultDatabase()
+
     # Initialize the RAG system
     rag_system = SQLiteOpenAIRAG()
     
@@ -305,6 +320,23 @@ async def main():
     # Save results to CSV
     csv_writer = CSVWriter()
     csv_writer.write_results(results, doc_type)
+
+    # Store results
+    doc_id = db.store_results(results, doc_type=doc_type, file_name=file_name)
+
+    # Get latest results
+    latest_results = db.get_latest_results(doc_type=doc_type, detailed=True)
+
+    # Get document history
+    history = db.get_document_history(doc_type=doc_type)
+
+    # Print results
+    print("\n" * 2)
+    print("-" * 30 + f"Results for {doc_type} document" + "-" * 30)
+    print("\n" * 2)
+
+    print(f"Latest results: {latest_results}")
+    print(f"Document history: {history}")
 
 
 if __name__ == "__main__":

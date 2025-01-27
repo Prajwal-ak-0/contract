@@ -4,3 +4,7 @@ __pycache__/
 vector_store.db
 sow_output.csv
 msa_output.csv
+contract_results.db
+
+contract_file/*
+!contract_file/.gitkeep
