@@ -8,3 +8,4 @@ contract_results.db
 
 contract_file/*
 !contract_file/.gitkeep
+conversation.db
