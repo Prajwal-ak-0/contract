@@ -1,0 +1,7 @@
+openai>=1.0.0
+python-dotenv
+numpy
+pypdf
+aiohttp
+asyncio
+sqlite3-utils

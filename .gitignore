@@ -1,0 +1,6 @@
+.env
+__pycache__/
+.venv/
+vector_store.db
+sow_output.csv
+msa_output.csv
