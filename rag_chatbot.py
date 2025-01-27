@@ -25,16 +25,13 @@ class RAGChatbot:
         self._init_conversation_db()
 
     def _init_conversation_db(self):
-        """Initialize or reset the conversation database."""
+        """Initialize the conversation database if it doesn't exist."""
         conn = sqlite3.connect(self.conversation_db_path)
         cursor = conn.cursor()
         
-        # Drop existing table if it exists
-        cursor.execute("DROP TABLE IF EXISTS conversations")
-        
-        # Create new table for conversation management
+        # Create table only if it doesn't exist
         cursor.execute("""
-            CREATE TABLE conversations (
+            CREATE TABLE IF NOT EXISTS conversations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 session_id TEXT NOT NULL,
                 message TEXT NOT NULL,
@@ -228,6 +225,12 @@ class RAGChatbot:
         # Generate session_id if not provided
         if session_id is None:
             session_id = str(uuid.uuid4())
+            # Clear previous conversations for new sessions
+            conn = sqlite3.connect(self.conversation_db_path)
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM conversations WHERE session_id = ?", (session_id,))
+            conn.commit()
+            conn.close()
 
         try:
             # Get current conversation context
@@ -269,6 +272,15 @@ if __name__ == "__main__":
     
     # Start conversation
     query = "What is the scope of the contract?"
-    response = chatbot.chat(query)
+    followup_query = "Could you please ellaborate bit more?"
     
-    print("Response:", json.dumps(response, indent=2))
+    # simulate a conversation
+    print("\nFirst Query:", query)
+    response = chatbot.chat(query)
+    print(f"Bot: {response['answer']}")
+    print(f"Context Summary: {response['context_summary']}\n")
+    
+    print("Follow-up Query:", followup_query)
+    response = chatbot.chat(followup_query, response['session_id'])
+    print(f"Bot: {response['answer']}")
+    print(f"Context Summary: {response['context_summary']}")
