@@ -19,15 +19,6 @@ const ChatTextBox: React.FC<ChatTextBoxProps> = ({
   className,
   disabled
 }) => {
-  // const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-  //   if (e.key === 'Enter' && !e.shiftKey) {
-  //     e.preventDefault();
-  //     const form = e.currentTarget.form;
-  //     if (form) {
-  //       form.dispatchEvent(new Event('submit', { cancelable: true }));
-  //     }
-  //   }
-  // };
 
   return (
     <div className="fixed bottom-0 left-0 right-0  p-4">
@@ -36,14 +27,13 @@ const ChatTextBox: React.FC<ChatTextBoxProps> = ({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className={`min-h-[90px] max-h-[400px] flex flex-1 w-full pt-4 pb-10 pl-5 pr-12 resize-none focus:outline-none focus:border-neutral-500 cursor-text text-lg bg-neutral-700/70 border-2 border-neutral-800 text-neutral-100 placeholder:text-neutral-600 rounded-3xl ${className}`}
+          className={`min-h-[90px] max-h-[400px] flex flex-1 w-full pt-4 pb-10 pl-5 pr-12 resize-none focus:outline-none text-3xl bg-white text-black rounded-3xl border border-gray-200 active:border-gray-200 placeholder:text-xl ${className}`}
           disabled={disabled}
-          // onKeyDown={handleKeyDown}
           rows={2}
         />
         <button 
           type="submit"
-          className="absolute right-4 bottom-4 p-2 text-neutral-400 hover:text-neutral-100 bg-neutral-800 hover:bg-neutral-700 rounded-xl transition-colors duration-200"
+          className="absolute right-4 bottom-4 p-2 text-neutral-400 hover:text-neutral-100 bg-gray-900 hover:bg-neutral-700 rounded-xl transition-colors duration-200 cursor-pointer"
           disabled={disabled || !value.trim()}
         >
           <SendHorizontal className="h-5 w-5" />

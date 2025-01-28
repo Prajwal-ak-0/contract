@@ -15,7 +15,7 @@ interface PDFViewerProps {
   onClose: () => void;
 }
 
-const PdfViewer: React.FC<PDFViewerProps> = ({ file, currentPage, setCurrentPage, onClose }) => {
+const PdfViewer: React.FC<PDFViewerProps> = ({ file, currentPage, setCurrentPage }) => {
   const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
   const [scale, setScale] = useState<number>(1.10);
   const [totalPages, setTotalPages] = useState<number>(0);
@@ -107,9 +107,7 @@ const PdfViewer: React.FC<PDFViewerProps> = ({ file, currentPage, setCurrentPage
   };
 
   return (
-    <div className="bg-white shadow overflow-hidden sm:rounded-lg p-4">
-      <h2 className="text-2xl font-bold text-gray-900 mb-4">PDF Viewer</h2>
-
+    <div className="bg-white shadow overflow-hidden sm:rounded-lg p-2">
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center">
           <Input
@@ -147,11 +145,8 @@ const PdfViewer: React.FC<PDFViewerProps> = ({ file, currentPage, setCurrentPage
         </div>
       </div>
 
-      <div className="border border-gray-300 rounded-lg overflow-auto" style={{ height: '600px' }}>
+      <div className="border border-gray-300 rounded-lg overflow-auto" style={{ height: '720px' }}>
         <canvas ref={canvasRef} className="mx-auto"></canvas>
-      </div>
-      <div className="flex justify-end mt-4">
-        <Button onClick={onClose}>Close</Button>
       </div>
     </div>
   );

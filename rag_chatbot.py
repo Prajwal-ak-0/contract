@@ -43,6 +43,15 @@ class RAGChatbot:
         conn.commit()
         conn.close()
 
+    def _delete_conversation_db(self):
+        """Delete the conversation database."""
+        conn = sqlite3.connect(self.conversation_db_path)
+        cursor = conn.cursor()
+
+        cursor.execute("DROP TABLE IF EXISTS conversation")
+        conn.commit()
+        conn.close()
+
     def _get_conversation_summary(self, session_id: str) -> str:
         """Retrieve the latest conversation summary for a session."""
         conn = sqlite3.connect(self.conversation_db_path)
@@ -227,12 +236,6 @@ class RAGChatbot:
             session_id = str(uuid.uuid4())
 
             print(f"New session started with ID: {session_id}")
-            # Clear previous conversations for new sessions
-            conn = sqlite3.connect(self.conversation_db_path)
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM conversations WHERE session_id = ?", (session_id,))
-            conn.commit()
-            conn.close()
 
         try:
             # Get current conversation context

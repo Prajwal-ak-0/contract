@@ -1,3 +1,5 @@
+"use client"
+
 import React from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -9,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useRouter } from "next/navigation";
 
 interface FileUploadProps {
   handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -27,6 +30,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   file,
   isUploading,
 }) => {
+  const router = useRouter();
   return (
     <div className="mt-8">
       <Label htmlFor="file-upload">Upload PDF</Label>
@@ -35,6 +39,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
           id="file-upload"
           type="file"
           onChange={handleFileChange}
+          className="text-black"
           accept=".pdf"
         />
         <Select value={pdfType} onValueChange={handlePdfTypeChange}>
@@ -42,19 +47,25 @@ const FileUpload: React.FC<FileUploadProps> = ({
             <SelectValue placeholder="Select PDF type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="NDA">NDA</SelectItem>
             <SelectItem value="SOW">SOW</SelectItem>
             <SelectItem value="MSA">MSA</SelectItem>
           </SelectContent>
         </Select>
       </div>
+      <div className="flex mt-4 gap-x-4">
       <Button
         onClick={handleFileUpload}
         disabled={!file || isUploading}
-        className="mt-4"
       >
         {isUploading ? "Uploading..." : "Upload PDF"}
       </Button>
+      <Button 
+         onClick={() => router.push("/chat")}
+         disabled={!file || isUploading}
+      >
+          Chat
+      </Button>
+      </div>
     </div>
   );
 };

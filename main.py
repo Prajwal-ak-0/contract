@@ -63,14 +63,16 @@ def sow_transform_response(response: list) -> list:
         if field == 'currency' and value == 'Rs':
             value = 'INR'
         elif field == 'billing_unit_type_and_rate_cost':
-            # First convert to string if it's not already
             if isinstance(value, dict) and isinstance(value.get('field_value'), dict):
                 field_value = value['field_value']
                 per_sample = field_value.get('per_sample', 0)
                 per_item = field_value.get('per_item', 0)
-                value = f"per_sample - {per_sample}, per_item - {per_item}"
+                value = f"Per-Sample : {per_sample}, Per-Item : {per_item}"
             else:
-                value = str(value) if value is not None else 'null'
+                if value is not None:
+                    value = str(value).replace('{', '').replace('}', '').replace("'", "")
+                else:
+                    value = 'null'
         elif field == 'particular_role_rate' and isinstance(value, list):
             roles = [f"{r['role'].split('/')[0].strip()} - {r['rate']}" for r in value]
             value = ', '.join(roles)
@@ -394,12 +396,16 @@ async def rag_chat(request: ChatRequest):
         query = request.query
         session_id = request.session_id
 
+        chatbot = RAGChatbot()
+
         if session_id == "first_session":
+            print("First session")
             session_id = None
+            chatbot._delete_conversation_db()
+
 
         print(f"Received chat query for session {session_id}: {query}")
         
-        chatbot = RAGChatbot()
 
         response = chatbot.chat(query)
 

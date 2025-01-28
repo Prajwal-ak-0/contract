@@ -20,7 +20,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
@@ -62,7 +61,7 @@ const ContractDataTable: React.FC<ContractDataTableProps> = ({
   handleEditField,
   handleSaveEdit,
   editingField,
-  setEditingField,
+  // setEditingField,
   isDialogOpen,
   setIsDialogOpen,
   closeDialogRef,
@@ -88,11 +87,12 @@ const ContractDataTable: React.FC<ContractDataTableProps> = ({
         updated_value: editValue,
       });
 
+      console.log(response.data);
       handleSaveEdit(editingField?.name || "", editValue, editPage);
       setIsDialogOpen(false);
       toast.success("Value updated successfully");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update value");
+    } catch (error) {
+      toast.error("Failed to update value");
     }
   };
 
@@ -115,7 +115,7 @@ const ContractDataTable: React.FC<ContractDataTableProps> = ({
               className="cursor-pointer relative group transition-colors duration-200 hover:bg-blue-50 dark:hover:bg-blue-900/20"
               onClick={() => field.page > 0 && onFieldClick(field.page)}
             >
-              <TableCell className="font-medium">
+              <TableCell className="font-medium text-lg">
                 {field.name}
                 <HoverCard openDelay={1000}>
                   <HoverCardTrigger asChild>
@@ -135,8 +135,8 @@ const ContractDataTable: React.FC<ContractDataTableProps> = ({
                   </HoverCardContent>
                 </HoverCard>
               </TableCell>
-              <TableCell>{field.value}</TableCell>
-              <TableCell>{field.page > 0 ? field.page : "N/A"}</TableCell>
+              <TableCell className="text-lg">{field.value}</TableCell>
+              <TableCell className="text-lg">{field.page > 0 ? field.page : "N/A"}</TableCell>
               <TableCell>
                 {fieldConfidence?.[field.name] !== undefined && (
                   <Badge

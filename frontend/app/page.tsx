@@ -6,10 +6,9 @@ import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { Separator } from "@/components/ui/separator";
 import PDFViewer from "@/components/PDFViewer";
-import ContractForm from "@/components/ContractForm";
 import FileUpload from "@/components/FileUpload";
 import ContractDataTable from "@/components/ContractDataTable";
-import { mockResponse } from "@/utils/dummy";
+// import { mockResponse } from "@/utils/dummy";
 
 type ApiData = Record<string, string>;
 
@@ -23,16 +22,11 @@ interface ExtractedDataItem {
 }
 
 export default function ContractPage() {
-  const [formData, setFormData] = useState({
-    remark: "",
-    subContractClause: "",
-  });
-
   const [apiData, setApiData] = useState<ApiData>({});
   const [fieldPageMapping, setFieldPageMapping] = useState<Record<string, string>>({});
   const [fieldConfidence, setFieldConfidence] = useState<Record<string, number>>({});
   const [fieldReasoning, setFieldReasoning] = useState<Record<string, string>>({});
-  const [fieldProof, setFieldProof] = useState<Record<string, string>>({});
+  // const [fieldProof, setFieldProof] = useState<Record<string, string>>({});
 
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -80,14 +74,6 @@ export default function ContractPage() {
     "other_insurance_required",
     "other_insurance_amount"
   ];
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: value,
-    }));
-  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -170,7 +156,7 @@ export default function ContractPage() {
         console.log('Reasoning:', newFieldReasoning);
 
         // Create Excel file
-        const allData = { ...formData, ...newApiData };
+        const allData = { ...newApiData };
         const ws = XLSX.utils.json_to_sheet([allData]);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Contract Data");
@@ -228,8 +214,6 @@ export default function ContractPage() {
 
     if (sowFields.includes(name) || msaFields.includes(name)) {
       setApiData((prev) => ({ ...prev, [name]: newValue }));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: newValue }));
     }
     setFieldPageMapping((prev) => ({ ...prev, [name]: pageNumber.toString() }));
     setEditingField(null);
@@ -247,8 +231,6 @@ export default function ContractPage() {
   };
 
   const fields = [
-    { name: "remark", page: 0, value: formData.remark },
-    { name: "subContractClause", page: 0, value: formData.subContractClause },
     ...((pdfType === "SOW" ? sowFields : msaFields).map((field) => ({
       name: field,
       page: parseInt(fieldPageMapping[field] || "0", 10),
@@ -257,8 +239,8 @@ export default function ContractPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <main className="max-w-8xl mx-auto py-3 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-white">
+      <main className="max-w-8xl mx-auto">
         <div className="px-4 sm:px-0">
           <div className="flex flex-col lg:flex-row">
             <div
@@ -268,12 +250,7 @@ export default function ContractPage() {
                 showPdfViewer ? "lg:mr-4" : ""
               }`}
             >
-              <div className="px-4 py-5 sm:p-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                  Contract Form
-                </h2>
-
-                <ContractForm formData={formData} handleInputChange={handleInputChange} />
+              <div className="px-4 sm:p-6">
 
                 <FileUpload
                   handleFileChange={handleFileChange}
