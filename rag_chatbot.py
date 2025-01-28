@@ -225,6 +225,8 @@ class RAGChatbot:
         # Generate session_id if not provided
         if session_id is None:
             session_id = str(uuid.uuid4())
+
+            print(f"New session started with ID: {session_id}")
             # Clear previous conversations for new sessions
             conn = sqlite3.connect(self.conversation_db_path)
             cursor = conn.cursor()
@@ -234,7 +236,9 @@ class RAGChatbot:
 
         try:
             # Get current conversation context
+            print(f"User Query: {query}")
             context_summary = self._get_conversation_summary(session_id)
+            print(f"Current Context Summary: {context_summary}")
             
             # Step 1: Rewrite queries
             rewritten_queries = self._rewrite_query(query, context_summary)

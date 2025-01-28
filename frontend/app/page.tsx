@@ -107,22 +107,47 @@ export default function ContractPage() {
     setFieldPageMapping({});
   };
 
-  const handleFileUpload = () => {
+  const handleFileUpload = async () => {
     if (file) {
       setIsUploading(true);
       try {
-        console.log("Mock response:", mockResponse);
+        const uploadFormData = new FormData();
+        uploadFormData.append("file", file);
+        uploadFormData.append("pdfType", pdfType);
+
+        const response = await fetch("http://localhost:8000/upload", {
+          method: "POST",
+          body: uploadFormData,
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
         
-        const extractedData = mockResponse.extracted_data as ExtractedDataItem[];
+        const result = await response.json();
+        console.log("Response from server:", result);
         
+        const extractedData = result.extracted_data as ExtractedDataItem[];
+        
+        // Initialize all our data objects
         const newApiData: ApiData = {};
         const newFieldPageMapping: Record<string, string> = {};
         const newFieldConfidence: Record<string, number> = {};
         const newFieldReasoning: Record<string, string> = {};
 
-        // Populate data from extractedData
-        extractedData.forEach((item) => {
-          newApiData[item.field] = item.value;
+        // Process all data from the response
+        extractedData.forEach(item => {
+          // Log details for debugging
+          console.log(`Processing field: ${item.field}`);
+          console.log(`Value: ${item.value}`);
+          console.log(`Page Number: ${item.page_num}`);
+          console.log(`Confidence: ${item.confidence}`);
+          console.log(`Reasoning: ${item.reasoning}`);
+          console.log(`Proof: ${item.proof}`);
+
+          // Store the data in our state objects
+          newApiData[item.field] = item.value || "";
           newFieldPageMapping[item.field] = item.page_num;
           if (item.confidence !== undefined) {
             newFieldConfidence[item.field] = Number(item.confidence);
@@ -130,18 +155,21 @@ export default function ContractPage() {
           if (item.reasoning) {
             newFieldReasoning[item.field] = item.reasoning;
           }
-          console.log(`Processing ${item.field}: ${item.value}`);
         });
 
+        // Update all our states
         setApiData(newApiData);
-        console.log('newApiData', newApiData);
         setFieldPageMapping(newFieldPageMapping);
-        console.log('newFieldPageMapping', newFieldPageMapping);
         setFieldConfidence(newFieldConfidence);
-        console.log('newFieldConfidence', newFieldConfidence);
         setFieldReasoning(newFieldReasoning);
-        console.log('newFieldReasoning', newFieldReasoning);
 
+        // Log the processed data
+        console.log('Processed API Data:', newApiData);
+        console.log('Page Mapping:', newFieldPageMapping);
+        console.log('Confidence Scores:', newFieldConfidence);
+        console.log('Reasoning:', newFieldReasoning);
+
+        // Create Excel file
         const allData = { ...formData, ...newApiData };
         const ws = XLSX.utils.json_to_sheet([allData]);
         const wb = XLSX.utils.book_new();
@@ -154,10 +182,14 @@ export default function ContractPage() {
         setExcelFile(excelBlob);
 
         setIsDownloadReady(true);
-        toast.success("File processed successfully");
+        toast.success("File uploaded successfully");
       } catch (error) {
-        console.error("Error processing file:", error);
-        toast.error(`An error occurred: ${(error as Error).message || "Unknown error"}`);
+        console.error("Error uploading file:", error);
+        if (error instanceof TypeError && error.message.includes("NetworkError")) {
+          toast.error("Network error. Please check your connection and try again.");
+        } else {
+          toast.error(`An error occurred while uploading the file: ${(error as Error).message || "Unknown error"}`);
+        }
       } finally {
         setIsUploading(false);
       }

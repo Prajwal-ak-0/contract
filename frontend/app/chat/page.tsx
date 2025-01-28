@@ -1,151 +1,186 @@
+// filepath: /home/prajwalak/Desktop/di/next_frontend/src/app/rag-chat/page.tsx
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useEffect, useState ,useRef } from "react";
+import { Loader2 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
+import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import ChatTextBox from "@/app/chat/ChatTextBox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
-// Dummy conversation data
-const dummyConversation = [
-  { role: 'assistant', content: 'Hello! How can I assist you today?' },
-  { role: 'user', content: 'I have a question about my contract.' },
-  { role: 'assistant', content: 'Of course! I\'d be happy to help. What specific aspect of your contract would you like to discuss?' },
-  { role: 'user', content: 'I\'m not sure about the credit period mentioned in the contract.' },
-  { role: 'assistant', content: 'I understand. The credit period typically refers to the time frame within which payment is due after the delivery of goods or services. In your contract, you can usually find this information in the payment terms section. Could you please check that section and let me know what it says?' },
-  { role: 'user', content: "It says Net 30, but I'm not sure what that means." },
-  { role: 'assistant', content: 'Ah, I see. "Net 30" is a common term in business contracts. It means that the full payment is due within 30 days of the invoice date. So, if you receive an invoice on July 1st, the payment would be due by July 31st. Is there anything else about the credit period youd like to know?' },
-];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const CodeComponent = ({ inline, className, children, ...props }: any) => {
+  const match = /language-(\w+)/.exec(className || '');
+  return !inline && match ? (
+    <SyntaxHighlighter
+      style={vscDarkPlus}
+      language={match[1]}
+      PreTag="div"
+      {...props}
+    >
+      {String(children).replace(/\n$/, '')}
+    </SyntaxHighlighter>
+  ) : (
+    <code className={className} {...props}>
+      {children}
+    </code>
+  );
+};
 
-// Frequently asked questions
-const faqs = [
-  "What does the SOW value include?",
-  "How is the COLA (Cost of Living Adjustment) calculated?",
-  "Can you explain the sub-contract clause?",
-  "What's the difference between inclusive and exclusive GST?"
-];
+export default function RagChatPage() {
 
-export default function ChatPage() {
-  const [conversation, setConversation] = useState(dummyConversation);
-  const [inputMessage, setInputMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [showFAQs, setShowFAQs] = useState(true);
-  
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [input, setInput] = useState<string>("");
+  const [sessionId, setSessionId] = useState<string >("first_session");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+  const handleInputChange = (value: string) => {
+    setInput(value);
+  };
+
+  const fetchResponse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+
+    setIsLoading(true);
+    setMessages(prev => [...prev, { content: input, role: 'user' }]);
+    setInput('');
+
+    try {
+      const response = await fetch("http://localhost:8000/rag-chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: input,
+          session_id: sessionId // Initially null, then use received session_id
+        }),
+      });
+      
+      const data = await response.json();
+      console.log("Response:", data);
+
+      if (data.response) {
+        // Update session ID from response
+        setSessionId(data.response.session_id);
+        
+        // Add assistant message with answer from response
+        setMessages(prev => [...prev, { 
+          content: data.response.answer,
+          role: 'assistant',
+          confidence: data.response.confidence,
+          reasoning: data.response.reasoning
+        }]);
+      }
+    } catch (error) {
+      console.error("Error fetching response:", error);
+    } finally {
+      setIsLoading(false);
     }
-  }, [conversation]);
-
-  const handleSendMessage = () => {
-    if (inputMessage.trim() === '') return;
-
-    setConversation(prev => [...prev, { role: 'user', content: inputMessage }]);
-    setInputMessage('');
-    setIsLoading(true);
-    setShowFAQs(false);
-
-    // Simulate API call
-    setTimeout(() => {
-      setConversation(prev => [...prev, { role: 'assistant', content: "Thank you for your question. I'm processing it and will respond shortly." }]);
-      setIsLoading(false);
-    }, 1500);
   };
 
-  const handleNewConversation = () => {
-    setConversation([]);
-    setShowFAQs(true);
-  };
-
-  const handleFAQClick = (question: string) => {
-    setConversation([{ role: 'user', content: question }]);
-    setShowFAQs(false);
-    setIsLoading(true);
-
-    // Simulate API call
-    setTimeout(() => {
-      setConversation(prev => [...prev, { role: 'assistant', content: `Here's some information about "${question}". [Detailed answer would be provided here]` }]);
-      setIsLoading(false);
-    }, 1500);
-  };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
-                <span className="text-2xl font-bold text-gray-900">Contract Assistant</span>
-              </div>
-            </div>
-            <div className="flex items-center">
-              <Button onClick={handleNewConversation}>New Conversation</Button>
-            </div>
-          </div>
-        </div>
-      </nav>
+    <div className="flex h-screen w-screen bg-gradient-to-b from-gray-900 via-gray-900 to-black">
+      <div className="flex-1 flex flex-col">
 
-      <main className="flex-grow container mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="bg-white shadow-xl rounded-lg overflow-hidden flex flex-col h-[calc(100vh-7rem)]">
-          <ScrollArea className="flex-grow p-4" ref={scrollAreaRef}>
-            {showFAQs ? (
-              <div className="space-y-4">
-                <h2 className="text-xl font-semibold">Frequently Asked Questions</h2>
-                {faqs.map((faq, index) => (
-                  <Button 
-                    key={index} 
-                    variant="outline" 
-                    className="w-full justify-start text-left h-auto py-2"
-                    onClick={() => handleFAQClick(faq)}
-                  >
-                    {faq}
-                  </Button>
-                ))}
-              </div>
-            ) : (
-              conversation.map((message, index) => (
-                <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} mb-4`}>
-                  <div className={`flex items-start ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                    <Avatar className="w-8 h-8">
-                      <AvatarImage src={message.role === 'user' ? "/user-avatar.png" : "/assistant-avatar.png"} />
-                      <AvatarFallback>{message.role === 'user' ? 'U' : 'A'}</AvatarFallback>
-                    </Avatar>
-                    <div className={`mx-2 p-3 rounded-lg ${message.role === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>
-                      {message.content}
+        {/* Chat container */}
+        <div className="flex-1 overflow-hidden flex flex-col">
+          <div className="relative w-full max-w-4xl mx-auto h-full flex flex-col">
+            <div className="flex-1 flex flex-col bg-transparent border-none overflow-hidden">
+              <ScrollArea className="flex-1 px-2 mb-24 mt-10">
+                <div className="space-y-8">
+                  {Array.isArray(messages) && messages.length > 0 ? (
+                    <>
+                      {messages.map((msg, index) => (
+                        <div
+                          key={index}
+                          className={`flex ${
+                            msg.role === "user" ? "justify-end ml-64" : "justify-start"
+                          } ${index > 0 ? "mt-6" : ""}`}
+                        >
+                          <div
+                            className={`max-w-[85%] rounded-3xl shadow-lg ${
+                              msg.role === "user"
+                                ? "bg-blue-600/20 text-blue-50 ml-40 font-sans font-light"
+                                : "bg-zinc-800/30 text-zinc-100 mr-12"
+                            }`}
+                          >
+                            {msg.role === "assistant" && (
+                              <div className="px-6 py-2 border-b border-zinc-700/50 flex items-center space-x-2">
+                                <div className="w-6 h-6 rounded-full bg-blue-600/20 flex items-center justify-center">
+                                  <span className="text-blue-400 text-sm">🤖</span>
+                                </div>
+                                <span className="text-sm font-medium text-blue-400">AI Assistant</span>
+                              </div>
+                            )}
+                            <div className="p-4">
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                rehypePlugins={[rehypeRaw]}
+                                className="prose prose-invert max-w-none"
+                                components={{
+                                  code: CodeComponent,
+                                }}
+                              >
+                                {msg.content}
+                              </ReactMarkdown>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {isLoading && (
+                        <div className="flex justify-start mt-6 w-full">
+                          <div className="w-full rounded-3xl shadow-lg bg-zinc-800/50 text-zinc-100 mr-32">
+                            <div className="px-6 py-2 border-b border-zinc-700/50 flex items-center space-x-2">
+                              <div className="w-6 h-6 rounded-full bg-blue-600/20 flex items-center justify-center">
+                                <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+                              </div>
+                              <span className="text-sm font-medium text-blue-400">AI Assistant</span>
+                            </div>
+                            <div className="p-8">
+                              <div className="space-y-4">
+                                <div className="h-4 w-3/4 bg-zinc-700/50 rounded-full animate-pulse" />
+                                <div className="h-4 w-2/3 bg-zinc-700/50 rounded-full animate-pulse" />
+                                <div className="h-4 w-1/2 bg-zinc-700/50 rounded-full animate-pulse" />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full py-12 text-center">
+                      <div className="text-zinc-400 space-y-2">
+                        <p className="text-lg font-medium">No messages yet</p>
+                        <p className="text-sm">Start a conversation by typing a message below</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
+                  <div ref={messagesEndRef} />
                 </div>
-              ))
-            )}
-            {isLoading && (
-              <div className="flex justify-start mb-4">
-                <div className="flex items-start">
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src="/assistant-avatar.png" />
-                    <AvatarFallback>A</AvatarFallback>
-                  </Avatar>
-                  <Skeleton className="h-10 w-40 mx-2" />
-                </div>
+              </ScrollArea>
+
+              <div className="p-4">
+                <form onSubmit={fetchResponse} className="flex space-x-3">
+                  <ChatTextBox
+                    value={input}
+                    onChange={handleInputChange}
+                    placeholder="Type your message... (Press Enter to send)"
+                    className="flex-1"
+                    disabled={isLoading}
+                  />
+                </form>
               </div>
-            )}
-          </ScrollArea>
-          <div className="p-4 border-t">
-            <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex space-x-2">
-              <Input 
-                value={inputMessage} 
-                onChange={(e) => setInputMessage(e.target.value)}
-                placeholder="Type your message here..."
-                className="flex-grow"
-              />
-              <Button type="submit">Send</Button>
-            </form>
+            </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

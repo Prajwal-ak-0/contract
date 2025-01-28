@@ -11,6 +11,7 @@ from sqlite_rag import SQLiteOpenAIRAG
 from chunking import CustomChunking
 from batch_embedding import AsyncEmbeddingGenerator
 from result_database import ResultDatabase
+from rag_chatbot import RAGChatbot
 import sqlite3
 import glob
 
@@ -378,19 +379,39 @@ async def upload_file(
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
         
-@app.post("/upload/edit-value")
-async def edit_value(request: EditValueRequest):
-    try:
-        await rag.update_field_value(request.doc_type, request.field_name, request.updated_value)
-        return {"success": True}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# @app.post("/upload/edit-value")
+# async def edit_value(request: EditValueRequest):
+#     try:
+#         rag = SQLiteOpenAIRAG()
+#         await rag.update_field_value(request.doc_type, request.field_name, request.updated_value)
+#         return {"success": True}
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/rag-chat")
 async def rag_chat(request: ChatRequest):
     try:
-        response = await rag.process_chat_query(request.query, request.session_id)
-        return {"success": True, "response": response}
+        query = request.query
+        session_id = request.session_id
+
+        if session_id == "first_session":
+            session_id = None
+
+        print(f"Received chat query for session {session_id}: {query}")
+        
+        chatbot = RAGChatbot()
+
+        response = chatbot.chat(query)
+
+        final_response = {
+            "response": response,
+            "session_id": session_id
+        }
+
+        print("Final response: ", final_response)
+
+        return final_response
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
