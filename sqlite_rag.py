@@ -279,7 +279,7 @@ async def main():
     chunker = CustomChunking(overlap_words=50)
 
     doc_type = "SOW"
-    pdf_path = "contract_file/Genpact.pdf"
+    pdf_path = "contract_file/Stream.pdf"
 
     print("-" * 30 + f"Loading {doc_type} document from '{pdf_path}'" + "-" * 30)
     
@@ -291,7 +291,6 @@ async def main():
     
     if not chunked_docs:
         print(f"Failed to load document: {pdf_path}")
-        sys.exit(1)
 
     # Initialize the database
     db = ResultDatabase()
@@ -316,6 +315,9 @@ async def main():
     
     # Extract all fields in parallel
     results = await rag_system.extract_all_fields(doc_type)
+
+    print(type(results))
+    print(results)
 
     # Save results to CSV
     csv_writer = CSVWriter()
