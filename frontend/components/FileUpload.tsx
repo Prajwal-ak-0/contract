@@ -36,13 +36,13 @@ const FileUpload: React.FC<FileUploadProps> = ({
           type="file"
           onChange={handleFileChange}
           accept=".pdf"
+          className="text-black"
         />
         <Select value={pdfType} onValueChange={handlePdfTypeChange}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Select PDF type" />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="NDA">NDA</SelectItem>
+          <SelectContent >
             <SelectItem value="SOW">SOW</SelectItem>
             <SelectItem value="MSA">MSA</SelectItem>
           </SelectContent>

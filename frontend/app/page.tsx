@@ -32,8 +32,7 @@ export default function ContractPage() {
   const [fieldPageMapping, setFieldPageMapping] = useState<Record<string, string>>({});
   const [fieldConfidence, setFieldConfidence] = useState<Record<string, number>>({});
   const [fieldReasoning, setFieldReasoning] = useState<Record<string, string>>({});
-  const [fieldProof, setFieldProof] = useState<Record<string, string>>({});
-
+  const [fieldProof, setFieldProof] = useState<Record<string, string>>({});  // Add this line
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isDownloadReady, setIsDownloadReady] = useState(false);
@@ -98,6 +97,7 @@ export default function ContractPage() {
       setIsDownloadReady(false);
       setApiData({});
       setFieldPageMapping({});
+      setFieldProof({});
     }
   };
 
@@ -105,6 +105,7 @@ export default function ContractPage() {
     setPdfType(value);
     setApiData({});
     setFieldPageMapping({});
+    setFieldProof({});
   };
 
   const handleFileUpload = () => {
@@ -119,6 +120,7 @@ export default function ContractPage() {
         const newFieldPageMapping: Record<string, string> = {};
         const newFieldConfidence: Record<string, number> = {};
         const newFieldReasoning: Record<string, string> = {};
+        const newFieldProof: Record<string, string> = {};
 
         // Populate data from extractedData
         extractedData.forEach((item) => {
@@ -129,6 +131,9 @@ export default function ContractPage() {
           }
           if (item.reasoning) {
             newFieldReasoning[item.field] = item.reasoning;
+          }
+          if (item.proof) {
+            newFieldProof[item.field] = item.proof;
           }
           console.log(`Processing ${item.field}: ${item.value}`);
         });
@@ -141,6 +146,8 @@ export default function ContractPage() {
         console.log('newFieldConfidence', newFieldConfidence);
         setFieldReasoning(newFieldReasoning);
         console.log('newFieldReasoning', newFieldReasoning);
+        setFieldProof(newFieldProof);
+        console.log('newFieldProof', newFieldProof);
 
         const allData = { ...formData, ...newApiData };
         const ws = XLSX.utils.json_to_sheet([allData]);
@@ -207,7 +214,17 @@ export default function ContractPage() {
   };
 
   const handleFieldClick = (page: number) => {
+    console.log('Field clicked, page number:', page);
     setCurrentPage(page);
+    
+    // Find the field for this page
+    const field = fields.find(f => f.page === page);
+    console.log('Found field:', field);
+    
+    if (field) {
+      const proofText = fieldProof[field.name];
+      console.log('Proof text for highlighting:', proofText);
+    }
   };
 
   const closePdfViewer = () => {
@@ -286,6 +303,12 @@ export default function ContractPage() {
                   currentPage={currentPage}
                   setCurrentPage={setCurrentPage}
                   onClose={closePdfViewer}
+                  textToHighlight={(() => {
+                    const field = fields.find(f => f.page === currentPage);
+                    const text = field ? fieldProof[field.name] : undefined;
+                    console.log('Sending text to highlight:', text);
+                    return text;
+                  })()}
                 />
               </div>
             )}
