@@ -1,0 +1,45 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.py[cod]
+*$py.class
+.pytest_cache
+.coverage
+htmlcov/
+
+# Virtual Environment
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Frontend
+frontend/
+
+# Database files
+*.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Other
+README.md
+*.md
+*.txt
+!requirements.txt

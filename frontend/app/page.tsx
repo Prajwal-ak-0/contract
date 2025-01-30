@@ -15,7 +15,7 @@ type ApiData = Record<string, string>;
 interface ExtractedDataItem {
   field: string;
   value: string;
-  page_num: string;
+  page_number: string;
   confidence?: number; // Optional
   reasoning?: string;  // Optional
   proof?: string;      // Optional
@@ -104,7 +104,11 @@ export default function ContractPage() {
         const response = await fetch("http://localhost:8000/upload", {
           method: "POST",
           body: uploadFormData,
-          credentials: "include",
+          mode: "cors",
+          credentials: "omit",
+          headers: {
+            "Accept": "application/json",
+          }
         });
 
         if (!response.ok) {
@@ -113,6 +117,11 @@ export default function ContractPage() {
         
         const result = await response.json();
         console.log("Response from server:", result);
+        
+        // Store dbId in localStorage
+        if (result.db_id) {
+          window.localStorage.setItem('dbId', result.db_id.toString());
+        }
         
         const extractedData = result.extracted_data as ExtractedDataItem[];
         
@@ -124,17 +133,9 @@ export default function ContractPage() {
 
         // Process all data from the response
         extractedData.forEach(item => {
-          // Log details for debugging
-          console.log(`Processing field: ${item.field}`);
-          console.log(`Value: ${item.value}`);
-          console.log(`Page Number: ${item.page_num}`);
-          console.log(`Confidence: ${item.confidence}`);
-          console.log(`Reasoning: ${item.reasoning}`);
-          console.log(`Proof: ${item.proof}`);
-
-          // Store the data in our state objects
+          console.log('Processing item:', item);  // Debug log
           newApiData[item.field] = item.value || "";
-          newFieldPageMapping[item.field] = item.page_num;
+          newFieldPageMapping[item.field] = item.page_number || "0";
           if (item.confidence !== undefined) {
             newFieldConfidence[item.field] = Number(item.confidence);
           }
@@ -196,30 +197,22 @@ export default function ContractPage() {
   };
 
   const handleEditField = (field: { name: string; value: string; page: number }) => {
+    console.log('Editing field:', field);  // Debug log
     setEditingField(field);
     setIsDialogOpen(true);
   };
 
   const handleSaveEdit = (name: string, newValue: string, newPage: string) => {
-    if (!newValue.trim() || !newPage.trim()) {
-      toast.error("Please fill in both value and page number.");
-      return;
-    }
-
-    const pageNumber = parseInt(newPage, 10);
-    if (isNaN(pageNumber) || pageNumber < 1) {
-      toast.error("Please enter a valid page number.");
-      return;
-    }
-
-    if (sowFields.includes(name) || msaFields.includes(name)) {
-      setApiData((prev) => ({ ...prev, [name]: newValue }));
-    }
-    setFieldPageMapping((prev) => ({ ...prev, [name]: pageNumber.toString() }));
-    setEditingField(null);
+    console.log('Saving edit:', { name, newValue, newPage });  // Debug log
+    setApiData((prev) => ({
+      ...prev,
+      [name]: newValue,
+    }));
+    setFieldPageMapping((prev) => ({
+      ...prev,
+      [name]: newPage,
+    }));
     setIsDialogOpen(false);
-    closeDialogRef.current?.click();
-    toast.success("Field updated successfully");
   };
 
   const handleFieldClick = (page: number) => {
@@ -231,11 +224,15 @@ export default function ContractPage() {
   };
 
   const fields = [
-    ...((pdfType === "SOW" ? sowFields : msaFields).map((field) => ({
-      name: field,
-      page: parseInt(fieldPageMapping[field] || "0", 10),
-      value: apiData[field] || "",
-    }))),
+    ...((pdfType === "SOW" ? sowFields : msaFields).map((field) => {
+      const pageNum = fieldPageMapping[field];
+      console.log(`Field ${field} page mapping:`, pageNum);  // Debug log
+      return {
+        name: field,
+        page: pageNum ? parseInt(pageNum) || 0 : 0,
+        value: apiData[field] || "",
+      };
+    })),
   ];
 
   return (

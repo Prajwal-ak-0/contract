@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import axios from "axios";
 import { toast } from "sonner";
 
 interface Field {
@@ -74,25 +73,42 @@ const ContractDataTable: React.FC<ContractDataTableProps> = ({
 
   React.useEffect(() => {
     if (editingField) {
+      console.log('Setting edit field values:', editingField);  
       setEditValue(editingField.value);
       setEditPage(editingField.page.toString());
     }
   }, [editingField]);
 
   const handleSave = async () => {
+    if (!editingField) return;
+    
     try {
-      const response = await axios.post("/api/update-field", {
-        doc_type: docType.toUpperCase(),
-        field_name: editingField?.name,
-        updated_value: editValue,
+      console.log('Saving with values:', { editValue, editPage });  
+      const response = await fetch('http://localhost:8000/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          db_id: window.localStorage.getItem('dbId'),
+          field: editingField.name,
+          value: editValue,
+          page_number: editPage,
+          doc_type: docType.toUpperCase()
+        })
       });
 
-      console.log(response.data);
-      handleSaveEdit(editingField?.name || "", editValue, editPage);
-      setIsDialogOpen(false);
-      toast.success("Value updated successfully");
+      const data = await response.json();
+      if (data.success) {
+        handleSaveEdit(editingField.name, editValue, editPage);
+        setIsDialogOpen(false);
+        toast.success(data.message || "Field updated successfully");
+      } else {
+        throw new Error(data.detail || "Failed to update field");
+      }
     } catch (error) {
-      toast.error("Failed to update value");
+      console.error('Error updating field:', error);
+      toast.error(error instanceof Error ? error.message : "Failed to update field");
     }
   };
 
@@ -115,11 +131,10 @@ const ContractDataTable: React.FC<ContractDataTableProps> = ({
               className="cursor-pointer relative group transition-colors duration-200 hover:bg-blue-50 dark:hover:bg-blue-900/20"
               onClick={() => field.page > 0 && onFieldClick(field.page)}
             >
-              <TableCell className="font-medium text-lg">
-                {field.name}
+              <TableCell className="font-medium text-lg relative">
                 <HoverCard openDelay={1000}>
                   <HoverCardTrigger asChild>
-                    <div className="absolute inset-0 z-10" />
+                    <div className="absolute inset-0" />
                   </HoverCardTrigger>
                   <HoverCardContent 
                     className="w-80 backdrop-blur-lg bg-blue-50 dark:bg-gray-800/95 p-4 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700"
@@ -134,6 +149,7 @@ const ContractDataTable: React.FC<ContractDataTableProps> = ({
                     </div>
                   </HoverCardContent>
                 </HoverCard>
+                {field.name}
               </TableCell>
               <TableCell className="text-lg">{field.value}</TableCell>
               <TableCell className="text-lg">{field.page > 0 ? field.page : "N/A"}</TableCell>
@@ -152,6 +168,7 @@ const ContractDataTable: React.FC<ContractDataTableProps> = ({
                 <Button
                   variant="ghost"
                   size="sm"
+                  className="relative z-20"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleEditField(field);
@@ -210,7 +227,7 @@ const ContractDataTable: React.FC<ContractDataTableProps> = ({
                   value={editPage}
                   className="col-span-3 text-black"
                   onChange={(e) => setEditPage(e.target.value)}
-                  min="1"
+                  min="0"
                   required
                   style={{ appearance: "textfield" }}
                 />

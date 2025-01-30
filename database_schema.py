@@ -2,6 +2,7 @@ from typing import Dict, List
 
 # Common table schema for SOW detailed results
 SOW_DETAILED_SCHEMA = {
+    'db_id': 'INTEGER NOT NULL',
     'field_name': 'TEXT NOT NULL',
     'field_value': 'TEXT',
     'page_number': 'TEXT',
@@ -14,6 +15,7 @@ SOW_DETAILED_SCHEMA = {
 
 # Common table schema for MSA detailed results
 MSA_DETAILED_SCHEMA = {
+    'db_id': 'INTEGER NOT NULL',
     'field_name': 'TEXT NOT NULL',
     'field_value': 'TEXT',
     'page_number': 'TEXT',
@@ -64,7 +66,8 @@ MSA_FIELDS = [
 # Create dynamic schema for simple tables based on fields
 def create_simple_schema(fields):
     schema = {
-        'file_name': 'TEXT NOT NULL PRIMARY KEY',
+        'db_id': 'INTEGER NOT NULL PRIMARY KEY',
+        'file_name': 'TEXT NOT NULL',
         'created_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
     }
     for field in fields:
@@ -76,10 +79,11 @@ MSA_SIMPLE_SCHEMA = create_simple_schema(MSA_FIELDS)
 
 # Document metadata schema
 DOCUMENT_METADATA_SCHEMA = {
+    'db_id': 'INTEGER NOT NULL',  # Added db_id
     'doc_type': 'TEXT NOT NULL',
     'file_name': 'TEXT NOT NULL',
     'processed_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-    'PRIMARY KEY': '(doc_type, file_name)'  # Composite primary key to allow multiple files
+    'PRIMARY KEY': '(db_id, doc_type, file_name)'  # Modified primary key to include db_id
 }
 
 def get_create_table_sql(table_name: str, schema: Dict[str, str]) -> str:
@@ -107,7 +111,8 @@ def get_table_names(doc_type: str) -> Dict[str, str]:
 INDEX_DEFINITIONS = {
     'idx_file_name': 'CREATE INDEX IF NOT EXISTS {table_name}_file_name_idx ON {table_name} (file_name)',
     'idx_created_at': 'CREATE INDEX IF NOT EXISTS {table_name}_created_at_idx ON {table_name} (created_at)',
-    'idx_doc_type': 'CREATE INDEX IF NOT EXISTS document_metadata_doc_type_idx ON document_metadata (doc_type)'
+    'idx_doc_type': 'CREATE INDEX IF NOT EXISTS document_metadata_doc_type_idx ON document_metadata (doc_type)',
+    'idx_db_id': 'CREATE INDEX IF NOT EXISTS {table_name}_db_id_idx ON {table_name} (db_id)'  # Added index for db_id
 }
 
 # Specific index definitions for detailed tables

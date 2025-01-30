@@ -4,4 +4,7 @@ numpy
 pypdf
 aiohttp
 asyncio
-sqlite3-utils
+fastapi>=0.104.1
+uvicorn[standard]>=0.24.0
+python-multipart
+pydantic>=2.5.2

@@ -74,7 +74,7 @@ class ResultDatabase:
     def _format_role_rate(self, value_dict: Dict) -> str:
         """Format role rate as a comma-separated string."""
         try:
-            field_value = value_dict.get('field_value', '[]')
+            field_value = value_dict.get('field_value', [])
             if isinstance(field_value, str):
                 try:
                     field_value = json.loads(field_value)
@@ -86,6 +86,8 @@ class ResultDatabase:
             # Format each role-rate pair
             formatted_pairs = []
             for item in field_value:
+                if not isinstance(item, dict):
+                    continue
                 role = item.get('role', '').strip()
                 rate = item.get('rate', 0)
                 if role:  # Include even if rate is 0
@@ -94,12 +96,12 @@ class ResultDatabase:
             return ', '.join(formatted_pairs) if formatted_pairs else ''
         except Exception as e:
             print(f"Error formatting role rate: {str(e)}")
-            return str(field_value)
+            return ''
 
     def _format_billing_unit(self, value_dict: Dict) -> str:
         """Format billing unit as a comma-separated string."""
         try:
-            field_value = value_dict.get('field_value', '{}')
+            field_value = value_dict.get('field_value', {})
             if isinstance(field_value, str):
                 try:
                     field_value = json.loads(field_value)
@@ -118,12 +120,12 @@ class ResultDatabase:
             return ', '.join(formatted_pairs) if formatted_pairs else ''
         except Exception as e:
             print(f"Error formatting billing unit: {str(e)}")
-            return str(field_value)
+            return ''
 
     def _format_insurance_field(self, value_dict: Dict) -> Dict[str, str]:
         """Format all insurance fields."""
         try:
-            field_value = value_dict.get('field_value', '{}')
+            field_value = value_dict.get('field_value', {})
             if isinstance(field_value, str):
                 try:
                     field_value = json.loads(field_value)
@@ -160,15 +162,16 @@ class ResultDatabase:
             all_types = [t.strip() for t in all_types if t.strip()]
             all_types = list(dict.fromkeys(all_types))  # Remove duplicates while preserving order
 
+            # Return individual field values instead of a combined object
             return {
                 'insurance_required': str(field_value.get('insurance_required', 'NO')),
-                'type_of_insurance_required': ', '.join(all_types) if all_types else 'None',
+                'type_of_insurance_required': ', '.join(all_types) if all_types else '',
                 'is_cyber_insurance_required': str(field_value.get('is_cyber_insurance_required', 'NO')),
-                'cyber_insurance_amount': f"${field_value.get('cyber_insurance_amount', 0):,}",
+                'cyber_insurance_amount': str(field_value.get('cyber_insurance_amount', 0)),
                 'is_workman_compensation_insurance_required': str(field_value.get('is_workman_compensation_insurance_required', 'NO')),
-                'workman_compensation_insurance_amount': f"${field_value.get('workman_compensation_insurance_amount', 0):,}",
-                'other_insurance_required': ', '.join(other_insurance_types) if other_insurance_types else 'None',
-                'other_insurance_details': '; '.join(other_insurance_details) if other_insurance_details else 'None'
+                'workman_compensation_insurance_amount': str(field_value.get('workman_compensation_insurance_amount', 0)),
+                'other_insurance_required': ', '.join(other_insurance_types) if other_insurance_types else '',
+                'other_insurance_amount': json.dumps({'insurance_details': details}) if details else ''
             }
         except Exception as e:
             print(f"Error formatting insurance field: {str(e)}")
@@ -178,39 +181,37 @@ class ResultDatabase:
         """Get default values for insurance fields."""
         return {
             'insurance_required': 'NO',
-            'type_of_insurance_required': 'None',
+            'type_of_insurance_required': '',
             'is_cyber_insurance_required': 'NO',
-            'cyber_insurance_amount': '$0',
+            'cyber_insurance_amount': '0',
             'is_workman_compensation_insurance_required': 'NO',
-            'workman_compensation_insurance_amount': '$0',
-            'other_insurance_required': 'None',
-            'other_insurance_details': 'None'
+            'workman_compensation_insurance_amount': '0',
+            'other_insurance_required': '',
+            'other_insurance_amount': ''
         }
 
-    def store_results(self, results: List[Dict[str, Any]], doc_type: str, file_name: str):
-        """Store extraction results in the database.
-        
-        Args:
-            results: List of dictionaries containing the extraction results
-            doc_type: Type of document (msa or sow)
-            file_name: Name of the file being processed
-        """
+    def store_results(self, results: List[Dict[str, Any]], doc_type: str, file_name: str) -> int:
+        """Store extraction results in both detailed and simple format tables."""
         conn = self._get_connection()
         cursor = conn.cursor()
-
+        
         try:
+            # Get the next db_id
+            cursor.execute("SELECT COALESCE(MAX(db_id), 0) + 1 FROM document_metadata")
+            db_id = cursor.fetchone()[0]
+            
+            # Store document metadata
+            cursor.execute(
+                """
+                INSERT INTO document_metadata (db_id, doc_type, file_name)
+                VALUES (?, ?, ?)
+                """,
+                (db_id, doc_type.lower(), file_name)
+            )
+
             # Get table names for the document type
             tables = get_table_names(doc_type)
             
-            # Store metadata (will be ignored if duplicate due to PRIMARY KEY constraint)
-            cursor.execute(
-                """
-                INSERT OR IGNORE INTO document_metadata (doc_type, file_name)
-                VALUES (?, ?)
-                """,
-                (doc_type, file_name)
-            )
-
             # Process results first to handle special fields
             processed_results = {}
             for result in results:
@@ -251,10 +252,11 @@ class ResultDatabase:
                     'proof': str(value_dict.get('proof', '')),
                 }
 
-            # Store detailed results
+            # Store in detailed format
             for result in processed_results.values():
                 # Base fields for insertion
                 values = {
+                    'db_id': db_id,
                     'field_name': result['field_name'],
                     'field_value': result['field_value'],
                     'page_number': result['page_number'],
@@ -277,9 +279,9 @@ class ResultDatabase:
                     list(values.values())
                 )
 
-            # Store simple results
-            simple_values = {'file_name': file_name}
-            fields = MSA_FIELDS if doc_type.lower() == 'msa' else SOW_FIELDS
+            # Store in simple format
+            simple_values = {'file_name': file_name, 'db_id': db_id}
+            fields = SOW_FIELDS if doc_type.lower() == 'sow' else MSA_FIELDS
             
             for field in fields:
                 if field in processed_results:
@@ -292,13 +294,15 @@ class ResultDatabase:
             columns = ', '.join(simple_values.keys())
             cursor.execute(
                 f"""
-                INSERT OR REPLACE INTO {tables['simple']} ({columns})
+                INSERT INTO {tables['simple']} ({columns})
                 VALUES ({placeholders})
                 """,
                 list(simple_values.values())
             )
 
             conn.commit()
+            return db_id
+            
         except Exception as e:
             conn.rollback()
             print(f"Error storing results: {str(e)}")
@@ -353,3 +357,67 @@ class ResultDatabase:
             raise
         finally:
             conn.close()
+
+    def update_sow_msa_detailed_simple_table(self, db_id: int, field: str, value: str, page_number: str, doc_type: str) -> bool:
+        """
+        Update both detailed and simple tables for SOW/MSA documents.
+        
+        Args:
+            db_id: The database ID of the document
+            field: The field name to update
+            value: The new value for the field
+            page_number: The page number where the field is found
+            doc_type: The type of document (SOW or MSA)
+            
+        Returns:
+            bool: True if update was successful, False otherwise
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # Normalize doc_type
+            doc_type = doc_type.lower()
+            
+            # Get table names based on doc_type
+            detailed_table = f"{doc_type}_detailed_results"
+            simple_table = f"{doc_type}_simple_results"
+            
+            # Update detailed table
+            cursor.execute(
+                f"""
+                UPDATE {detailed_table}
+                SET field_value = ?, page_number = ?
+                WHERE db_id = ? AND field_name = ?
+                """,
+                (value, page_number, db_id, field)
+            )
+            
+            # Update simple table
+            # Note: We need to handle special fields differently
+            if field == 'particular_role_rate' or field == 'billing_unit_type_and_rate_cost':
+                # These fields require special formatting, so we'll skip them for now
+                # They should be handled by the specific formatting functions in ResultDatabase
+                pass
+            else:
+                cursor.execute(
+                    f"""
+                    UPDATE {simple_table}
+                    SET {field} = ?
+                    WHERE db_id = ?
+                    """,
+                    (value, db_id)
+                )
+            
+            conn.commit()
+            cursor.close()
+            conn.close()
+            
+            return True
+            
+        except Exception as e:
+            print(f"Error updating tables: {str(e)}")
+            if conn:
+                conn.rollback()
+                conn.close()
+            return False

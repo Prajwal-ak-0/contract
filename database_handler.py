@@ -57,7 +57,7 @@ class DatabaseHandler:
         count = c.fetchone()[0]
         conn.close()
         return count
-    
+
     async def get_relevant_chunks(self, query: str, k: int = 3, async_client=None) -> List[Dict]:
         """Get top-k relevant chunks for a query using cosine similarity."""
         # Get query embedding
