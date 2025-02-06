@@ -72,6 +72,19 @@ body {
   100% { transform: rotate(360deg); }
 }
 
+@keyframes wave {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-wave {
+  animation: wave 2s linear infinite;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

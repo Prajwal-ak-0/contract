@@ -8,7 +8,11 @@ import { Separator } from "@/components/ui/separator";
 import PDFViewer from "@/components/PDFViewer";
 import FileUpload from "@/components/FileUpload";
 import ContractDataTable from "@/components/ContractDataTable";
-// import { mockResponse } from "@/utils/dummy";
+import LoadingSpinner from "@/components/loaders/LoadingSpinner";
+import LoadingDots from "@/components/loaders/LoadingDots";
+import LoadingWave from "@/components/loaders/LoadingWave";
+import LoadingTypeWriter from "@/components/loaders/LoadingTypeWriter";
+import CircularProgress from "@/components/loaders/CircularProgress";
 
 type ApiData = Record<string, string>;
 
@@ -16,17 +20,21 @@ interface ExtractedDataItem {
   field: string;
   value: string;
   page_number: string;
-  confidence?: number; // Optional
-  reasoning?: string;  // Optional
-  proof?: string;      // Optional
+  confidence?: number;
+  reasoning?: string;
+  proof?: string;
 }
+
+// Type for different loader components
+type LoaderType = "spinner" | "dots" | "wave" | "typewriter" | "circular";
 
 export default function ContractPage() {
   const [apiData, setApiData] = useState<ApiData>({});
   const [fieldPageMapping, setFieldPageMapping] = useState<Record<string, string>>({});
   const [fieldConfidence, setFieldConfidence] = useState<Record<string, number>>({});
   const [fieldReasoning, setFieldReasoning] = useState<Record<string, string>>({});
-  // const [fieldProof, setFieldProof] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
+  const [activeLoader, setActiveLoader] = useState<LoaderType>("spinner");
 
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -38,7 +46,42 @@ export default function ContractPage() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [editingField, setEditingField] = useState<{ name: string; value: string; page: number } | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isFileUploaded, setIsFileUploaded] = useState(false)
   const closeDialogRef = useRef<HTMLButtonElement>(null);
+
+  // Array of available loaders for easy switching
+  const loaders: { name: string; type: LoaderType }[] = [
+    { name: "Spinner", type: "spinner" },
+    { name: "Dots", type: "dots" },
+    { name: "Wave", type: "wave" },
+    { name: "TypeWriter", type: "typewriter" },
+    { name: "CircularProgress", type: "circular" },
+  ];
+
+  // Function to cycle through loaders (for testing)
+  const cycleLoader = () => {
+    const currentIndex = loaders.findIndex(l => l.type === activeLoader);
+    const nextIndex = (currentIndex + 1) % loaders.length;
+    setActiveLoader(loaders[nextIndex].type);
+  };
+
+  // Function to render the active loader
+  const renderLoader = () => {
+    switch (activeLoader) {
+      case "spinner":
+        return <LoadingSpinner />;
+      case "dots":
+        return <LoadingDots />;
+      case "wave":
+        return <LoadingWave />;
+      case "typewriter":
+        return <LoadingTypeWriter />;
+      case "circular":
+        return <CircularProgress />;
+      default:
+        return <LoadingSpinner />;
+    }
+  };
 
   const sowFields = [
     "client_company_name",
@@ -101,6 +144,7 @@ export default function ContractPage() {
         uploadFormData.append("file", file);
         uploadFormData.append("pdfType", pdfType);
 
+        setLoading(true);
         const response = await fetch("http://localhost:8000/upload", {
           method: "POST",
           body: uploadFormData,
@@ -117,6 +161,7 @@ export default function ContractPage() {
         
         const result = await response.json();
         console.log("Response from server:", result);
+        setIsFileUploaded(true);
         
         // Store dbId in localStorage
         if (result.db_id) {
@@ -133,7 +178,7 @@ export default function ContractPage() {
 
         // Process all data from the response
         extractedData.forEach(item => {
-          console.log('Processing item:', item);  // Debug log
+          console.log('Processing item:', item);  
           newApiData[item.field] = item.value || "";
           newFieldPageMapping[item.field] = item.page_number || "0";
           if (item.confidence !== undefined) {
@@ -150,12 +195,6 @@ export default function ContractPage() {
         setFieldConfidence(newFieldConfidence);
         setFieldReasoning(newFieldReasoning);
 
-        // Log the processed data
-        console.log('Processed API Data:', newApiData);
-        console.log('Page Mapping:', newFieldPageMapping);
-        console.log('Confidence Scores:', newFieldConfidence);
-        console.log('Reasoning:', newFieldReasoning);
-
         // Create Excel file
         const allData = { ...newApiData };
         const ws = XLSX.utils.json_to_sheet([allData]);
@@ -169,6 +208,7 @@ export default function ContractPage() {
         setExcelFile(excelBlob);
 
         setIsDownloadReady(true);
+        setLoading(false);
         toast.success("File uploaded successfully");
       } catch (error) {
         console.error("Error uploading file:", error);
@@ -197,13 +237,13 @@ export default function ContractPage() {
   };
 
   const handleEditField = (field: { name: string; value: string; page: number }) => {
-    console.log('Editing field:', field);  // Debug log
+    console.log('Editing field:', field);  
     setEditingField(field);
     setIsDialogOpen(true);
   };
 
   const handleSaveEdit = (name: string, newValue: string, newPage: string) => {
-    console.log('Saving edit:', { name, newValue, newPage });  // Debug log
+    console.log('Saving edit:', { name, newValue, newPage });  
     setApiData((prev) => ({
       ...prev,
       [name]: newValue,
@@ -226,7 +266,7 @@ export default function ContractPage() {
   const fields = [
     ...((pdfType === "SOW" ? sowFields : msaFields).map((field) => {
       const pageNum = fieldPageMapping[field];
-      console.log(`Field ${field} page mapping:`, pageNum);  // Debug log
+      console.log(`Field ${field} page mapping:`, pageNum);  
       return {
         name: field,
         page: pageNum ? parseInt(pageNum) || 0 : 0,
@@ -237,6 +277,7 @@ export default function ContractPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      {loading && <LoadingSpinner />}
       <main className="max-w-8xl mx-auto">
         <div className="px-4 sm:px-0">
           <div className="flex flex-col lg:flex-row">
@@ -247,16 +288,18 @@ export default function ContractPage() {
                 showPdfViewer ? "lg:mr-4" : ""
               }`}
             >
-              <div className="px-4 sm:p-6">
-
-                <FileUpload
-                  handleFileChange={handleFileChange}
-                  pdfType={pdfType}
-                  handlePdfTypeChange={handlePdfTypeChange}
-                  handleFileUpload={handleFileUpload}
-                  file={file}
-                  isUploading={isUploading}
-                />
+              <div className={`px-4 sm:p-6 ${loading ? 'opacity-60' : ''}`}>
+                <div className="w-1/2">
+                  <FileUpload
+                    handleFileChange={handleFileChange}
+                    pdfType={pdfType}
+                    handlePdfTypeChange={handlePdfTypeChange}
+                    handleFileUpload={handleFileUpload}
+                    file={file}
+                    isUploading={isUploading}
+                    isFileUploaded={isFileUploaded}
+                  />
+                </div>
 
                 <Separator className="my-8" />
 
@@ -286,7 +329,7 @@ export default function ContractPage() {
             </div>
 
             {showPdfViewer && pdfFile && (
-              <div className="w-full lg:w-1/2">
+              <div className={`w-full lg:w-1/2 ${loading ? 'opacity-50' : ''}`}>
                 <PDFViewer
                   file={pdfFile}
                   currentPage={currentPage}

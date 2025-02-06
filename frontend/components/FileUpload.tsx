@@ -20,6 +20,7 @@ interface FileUploadProps {
   handleFileUpload: () => void;
   file: File | null;
   isUploading: boolean;
+  isFileUploaded: boolean;
 }
 
 const FileUpload: React.FC<FileUploadProps> = ({
@@ -29,6 +30,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   handleFileUpload,
   file,
   isUploading,
+  isFileUploaded,
 }) => {
   const router = useRouter();
   return (
@@ -61,7 +63,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
       </Button>
       <Button 
          onClick={() => router.push("/chat")}
-         disabled={!file || isUploading}
+         disabled={!file || isUploading || !isFileUploaded}
       >
           Chat
       </Button>
