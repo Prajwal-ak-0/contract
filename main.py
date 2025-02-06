@@ -301,6 +301,12 @@ async def upload_file(
     try:
         # Create contract_file directory if it doesn't exist
         os.makedirs("contract_file", exist_ok=True)
+
+        # make sure contract_file directory is empty
+        for f in os.listdir("contract_file"):
+            file_path = os.path.join("contract_file", f)
+            if os.path.isfile(file_path):
+                os.remove(file_path)
         
         # Save uploaded file
         file_path = os.path.join("contract_file", file.filename)

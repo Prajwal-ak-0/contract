@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Pen } from "lucide-react";
+import { RiAiGenerate2 } from "react-icons/ri";
 import { Badge } from "@/components/ui/badge";
 import {
   HoverCard,
@@ -48,6 +49,13 @@ interface ContractDataTableProps {
   fieldReasoning?: Record<string, string>;
 }
 
+// Type for the field data to be stored in localStorage
+interface StoredFieldData {
+  field: string;
+  field_value: string;
+  page_number: number;
+}
+
 const getConfidenceBadgeColor = (confidence: number) => {
   if (confidence >= 8) return "bg-green-500 hover:bg-green-600";
   if (confidence >= 5) return "bg-yellow-500 hover:bg-yellow-600";
@@ -60,7 +68,6 @@ const ContractDataTable: React.FC<ContractDataTableProps> = ({
   handleEditField,
   handleSaveEdit,
   editingField,
-  // setEditingField,
   isDialogOpen,
   setIsDialogOpen,
   closeDialogRef,
@@ -70,6 +77,20 @@ const ContractDataTable: React.FC<ContractDataTableProps> = ({
 }) => {
   const [editValue, setEditValue] = React.useState("");
   const [editPage, setEditPage] = React.useState("");
+  
+  const handleRowClick = (field: Field) => {
+    // Store field data in localStorage
+    window.localStorage.removeItem('selectedFieldData');
+    const fieldData: StoredFieldData = {
+      field: field.name,
+      field_value: field.value,
+      page_number: field.page
+    };
+    localStorage.setItem('selectedFieldData', JSON.stringify(fieldData));
+    
+    // Navigate to chat page
+    window.location.href = '/chat';
+  };
 
   React.useEffect(() => {
     if (editingField) {
@@ -122,19 +143,20 @@ const ContractDataTable: React.FC<ContractDataTableProps> = ({
             <TableHead>Page</TableHead>
             <TableHead>Confidence</TableHead>
             <TableHead>Action</TableHead>
+            <TableHead>AI Verify</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {fields.map((field) => (
             <TableRow
               key={field.name}
-              className="cursor-pointer relative group transition-colors duration-200 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+              className="group transition-colors duration-200 hover:bg-blue-50 dark:hover:bg-blue-900/20"
               onClick={() => field.page > 0 && onFieldClick(field.page)}
             >
               <TableCell className="font-medium text-lg relative">
                 <HoverCard openDelay={1000}>
                   <HoverCardTrigger asChild>
-                    <div className="absolute inset-0" />
+                    <div className="absolute inset-0 hover-card-trigger z-10" />
                   </HoverCardTrigger>
                   <HoverCardContent 
                     className="w-80 backdrop-blur-lg bg-blue-50 dark:bg-gray-800/95 p-4 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700"
@@ -151,8 +173,12 @@ const ContractDataTable: React.FC<ContractDataTableProps> = ({
                 </HoverCard>
                 {field.name}
               </TableCell>
-              <TableCell className="text-lg">{field.value}</TableCell>
-              <TableCell className="text-lg">{field.page > 0 ? field.page : "N/A"}</TableCell>
+              <TableCell className="text-lg">
+                {field.value}
+              </TableCell>
+              <TableCell className="text-lg">
+                {field.page > 0 ? field.page : "N/A"}
+              </TableCell>
               <TableCell>
                 {fieldConfidence?.[field.name] !== undefined && (
                   <Badge
@@ -168,13 +194,27 @@ const ContractDataTable: React.FC<ContractDataTableProps> = ({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="relative z-20"
+                  className="relative z-20 action-button"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleEditField(field);
                   }}
                 >
                   <Pen className="h-4 w-4" />
+                </Button>
+              </TableCell>
+              <TableCell>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="relative z-20 action-button hover:bg-blue-100"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRowClick(field);
+                  }}
+                  title="Verify with AI"
+                >
+                  <RiAiGenerate2 className="h-4 w-4 text-blue-600" />
                 </Button>
               </TableCell>
             </TableRow>

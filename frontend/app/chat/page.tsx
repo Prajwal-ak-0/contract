@@ -1,4 +1,3 @@
-// filepath: /home/prajwalak/Desktop/di/next_frontend/src/app/rag-chat/page.tsx
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -55,6 +54,21 @@ export default function RagChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Run once on component mount to check for field data
+  useEffect(() => {
+    const storedFieldData = localStorage.getItem('selectedFieldData');
+    if (storedFieldData) {
+      const fieldData = JSON.parse(storedFieldData);
+      const promptTemplate = `Could you justify the ${fieldData.field} value which is extracted as ${fieldData.field_value} and was extracted from page number ${fieldData.page_number}`;
+      
+      // Set input and trigger fetch
+      setInput(promptTemplate);
+      
+      // Use setTimeout to ensure state is updated
+      setTimeout(() => fetchResponse(), 0);
+    }
+  }, []); // Empty dependency array as this should only run once
+
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
@@ -65,9 +79,10 @@ export default function RagChatPage() {
 
   const handleInputChange = (value: string) => setInput(value);
 
-  const fetchResponse = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
+  const fetchResponse = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const currentInput = input.trim();
+    if (!currentInput || isLoading) return;
 
     setIsLoading(true);
     const newMessage: ChatMessage = { content: input, role: "user" };
@@ -175,15 +190,14 @@ export default function RagChatPage() {
 
         <div className="absolute bottom-0 left-0 right-0">
           <div className="max-w-4xl mx-auto px-4 py-6 z-10">
-            <form onSubmit={fetchResponse}>
-              <ChatTextBox
-                value={input}
-                onChange={handleInputChange}
-                placeholder="Type your message... (Shift + Enter for new line)"
-                className="w-full bg-gray-200 text-xl border border-gray-200 active:border-gray-200"
-                disabled={isLoading}
-              />
-            </form>
+            <ChatTextBox
+              value={input}
+              onChange={handleInputChange}
+              onSubmit={fetchResponse}
+              placeholder="Type your message... (Shift + Enter for new line)"
+              className="w-full bg-gray-200 text-xl border border-gray-200 active:border-gray-200"
+              disabled={isLoading}
+            />
           </div>
         </div>
       </div>

@@ -9,10 +9,6 @@ import PDFViewer from "@/components/PDFViewer";
 import FileUpload from "@/components/FileUpload";
 import ContractDataTable from "@/components/ContractDataTable";
 import LoadingSpinner from "@/components/loaders/LoadingSpinner";
-import LoadingDots from "@/components/loaders/LoadingDots";
-import LoadingWave from "@/components/loaders/LoadingWave";
-import LoadingTypeWriter from "@/components/loaders/LoadingTypeWriter";
-import CircularProgress from "@/components/loaders/CircularProgress";
 
 type ApiData = Record<string, string>;
 
@@ -25,16 +21,12 @@ interface ExtractedDataItem {
   proof?: string;
 }
 
-// Type for different loader components
-type LoaderType = "spinner" | "dots" | "wave" | "typewriter" | "circular";
-
 export default function ContractPage() {
   const [apiData, setApiData] = useState<ApiData>({});
   const [fieldPageMapping, setFieldPageMapping] = useState<Record<string, string>>({});
   const [fieldConfidence, setFieldConfidence] = useState<Record<string, number>>({});
   const [fieldReasoning, setFieldReasoning] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-  const [activeLoader, setActiveLoader] = useState<LoaderType>("spinner");
 
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -48,40 +40,6 @@ export default function ContractPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isFileUploaded, setIsFileUploaded] = useState(false)
   const closeDialogRef = useRef<HTMLButtonElement>(null);
-
-  // Array of available loaders for easy switching
-  const loaders: { name: string; type: LoaderType }[] = [
-    { name: "Spinner", type: "spinner" },
-    { name: "Dots", type: "dots" },
-    { name: "Wave", type: "wave" },
-    { name: "TypeWriter", type: "typewriter" },
-    { name: "CircularProgress", type: "circular" },
-  ];
-
-  // Function to cycle through loaders (for testing)
-  const cycleLoader = () => {
-    const currentIndex = loaders.findIndex(l => l.type === activeLoader);
-    const nextIndex = (currentIndex + 1) % loaders.length;
-    setActiveLoader(loaders[nextIndex].type);
-  };
-
-  // Function to render the active loader
-  const renderLoader = () => {
-    switch (activeLoader) {
-      case "spinner":
-        return <LoadingSpinner />;
-      case "dots":
-        return <LoadingDots />;
-      case "wave":
-        return <LoadingWave />;
-      case "typewriter":
-        return <LoadingTypeWriter />;
-      case "circular":
-        return <CircularProgress />;
-      default:
-        return <LoadingSpinner />;
-    }
-  };
 
   const sowFields = [
     "client_company_name",
@@ -143,8 +101,11 @@ export default function ContractPage() {
         const uploadFormData = new FormData();
         uploadFormData.append("file", file);
         uploadFormData.append("pdfType", pdfType);
-
+        
         setLoading(true);
+
+        window.localStorage.removeItem('dbId');
+
         const response = await fetch("http://localhost:8000/upload", {
           method: "POST",
           body: uploadFormData,
