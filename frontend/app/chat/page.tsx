@@ -90,7 +90,7 @@ export default function RagChatPage() {
     setInput("");
 
     try {
-      const response = await fetch("http://localhost:8000/rag-chat", {
+      const response = await fetch("https://contract-backend-965571980615.us-central1.run.app/rag-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: input, session_id: sessionId }),
