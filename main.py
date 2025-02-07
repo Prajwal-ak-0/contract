@@ -92,19 +92,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
-
-
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=False,    # Changed to False since we're not using credentials
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-    max_age=3600,              # Cache preflight requests for 1 hour
-)
+# Note: CORS middleware is already configured above
 
 class EditValueRequest(BaseModel):
     doc_type: str
