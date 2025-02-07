@@ -1,12 +1,14 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
+from json.decoder import JSONDecodeError
 import os
 import sys
 import asyncio
 import logging
+import traceback
 from database_handler import DatabaseHandler
 from sqlite_rag import SQLiteOpenAIRAG
 from chunking import CustomChunking
@@ -32,30 +34,43 @@ def get_cors_headers():
 app = FastAPI()
 
 # Configure CORS middleware
-# Custom CORS middleware for better control
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+    max_age=86400
+)
+
+# Add error handling middleware
 @app.middleware("http")
-async def cors_middleware(request: Request, call_next):
-    if request.method == "OPTIONS":
-        # Handle preflight requests
+async def error_handling_middleware(request: Request, call_next):
+    try:
+        if request.method == "OPTIONS":
+            return JSONResponse(
+                content={"status": "ok"},
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                    "Access-Control-Allow-Headers": "*",
+                    "Access-Control-Max-Age": "86400"
+                }
+            )
+        
+        response = await call_next(request)
+        
+        # Ensure CORS headers are present in all responses
+        if not response.headers.get("Access-Control-Allow-Origin"):
+            response.headers["Access-Control-Allow-Origin"] = "*"
+        
+        return response
+    except Exception as e:
         return JSONResponse(
-            content={"status": "ok"},
-            headers={
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "POST, OPTIONS",
-                "Access-Control-Allow-Headers": "Content-Type",
-                "Access-Control-Max-Age": "86400"
-            }
+            status_code=500,
+            content={"error": str(e)},
+            headers={"Access-Control-Allow-Origin": "*"}
         )
-    
-    # Handle actual requests
-    response = await call_next(request)
-    
-    # Ensure CORS headers are present in all responses
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
-    
-    return response
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -455,24 +470,25 @@ async def update_field(request: UpdateFieldRequest):
 @app.post("/rag-chat")
 async def rag_chat(request: Request):
     print("Received request to /rag-chat")
+    print(f"Request headers: {dict(request.headers)}")
     
-    # Validate content type
-    if not request.headers.get("content-type", "").startswith("application/json"):
-        return JSONResponse(
-            content={"error": "Content-Type must be application/json"},
-            status_code=415,
-            headers={"Access-Control-Allow-Origin": "*"}
-        )
+    cors_headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "*"
+    }
     
     try:
         # Parse JSON body
         try:
             data = await request.json()
-        except JSONDecodeError:
+            print(f"Received data: {data}")
+        except JSONDecodeError as e:
+            print(f"JSON decode error: {e}")
             return JSONResponse(
                 content={"error": "Invalid JSON format"},
                 status_code=400,
-                headers={"Access-Control-Allow-Origin": "*"}
+                headers=cors_headers
             )
         
         # Validate fields
@@ -480,7 +496,7 @@ async def rag_chat(request: Request):
             return JSONResponse(
                 content={"error": "query field is required"},
                 status_code=400,
-                headers={"Access-Control-Allow-Origin": "*"}
+                headers=cors_headers
             )
         
         query = data["query"]
@@ -503,15 +519,17 @@ async def rag_chat(request: Request):
                 "response": response,
                 "session_id": session_id
             },
-            headers={"Access-Control-Allow-Origin": "*"}
+            headers=cors_headers
         )
         
     except Exception as e:
         print(f"Error in rag_chat: {str(e)}")
+        print(f"Error type: {type(e)}")
+        print(f"Error traceback: {traceback.format_exc()}")
         return JSONResponse(
             content={"error": str(e)},
             status_code=500,
-            headers={"Access-Control-Allow-Origin": "*"}
+            headers=cors_headers
         )
 
 if __name__ == "__main__":
