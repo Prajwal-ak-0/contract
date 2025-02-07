@@ -485,7 +485,12 @@ async def rag_chat(request: ChatRequest):
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error in rag_chat: {str(e)}")
+        return JSONResponse(
+            content={"detail": str(e)},
+            status_code=500,
+            headers=get_cors_headers()
+        )
 
 if __name__ == "__main__":
     import uvicorn

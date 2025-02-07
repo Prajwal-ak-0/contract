@@ -92,7 +92,12 @@ export default function RagChatPage() {
     try {
       const response = await fetch("https://contract-backend-965571980615.us-central1.run.app/rag-chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        mode: "cors",
+        credentials: "include",
         body: JSON.stringify({ query: input, session_id: sessionId }),
       });
 
