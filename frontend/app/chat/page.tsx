@@ -90,11 +90,25 @@ export default function RagChatPage() {
     setInput("");
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
       const response = await fetch("https://contract-backend-965571980615.us-central1.run.app/rag-chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: input.trim(), session_id: sessionId }),
+        headers: { 
+          "Content-Type": "application/json",
+          "X-Request-Source": "chat-page"
+        },
+        body: JSON.stringify({ 
+          query: currentInput,
+          session_id: sessionId || "default-session"
+        }),
+        signal: controller.signal,
+        mode: "cors",
+        credentials: "omit"
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       
@@ -112,11 +126,18 @@ export default function RagChatPage() {
         ]);
       }
     } catch (error) {
-      console.error("Fetch error:", error);
+      console.error("Full error details:", {
+        error,
+        timestamp: new Date().toISOString(),
+        input: currentInput,
+        sessionId
+      });
       setMessages(prev => [
         ...prev,
         {
-          content: "Sorry, I'm having trouble responding. Please try again later.",
+          content: error instanceof Error ? 
+            `Error: ${error.message}` : 
+            "Sorry, I'm having trouble responding. Please try again later.",
           role: "assistant"
         }
       ]);

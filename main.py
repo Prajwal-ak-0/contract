@@ -32,14 +32,30 @@ def get_cors_headers():
 app = FastAPI()
 
 # Configure CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    max_age=86400
-)
+# Custom CORS middleware for better control
+@app.middleware("http")
+async def cors_middleware(request: Request, call_next):
+    if request.method == "OPTIONS":
+        # Handle preflight requests
+        return JSONResponse(
+            content={"status": "ok"},
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "POST, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Max-Age": "86400"
+            }
+        )
+    
+    # Handle actual requests
+    response = await call_next(request)
+    
+    # Ensure CORS headers are present in all responses
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    
+    return response
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -437,42 +453,66 @@ async def update_field(request: UpdateFieldRequest):
 
 
 @app.post("/rag-chat")
-async def rag_chat(request_body: dict):
-    print("Received request body:", request_body)
+async def rag_chat(request: Request):
+    print("Received request to /rag-chat")
+    
+    # Validate content type
+    if not request.headers.get("content-type", "").startswith("application/json"):
+        return JSONResponse(
+            content={"error": "Content-Type must be application/json"},
+            status_code=415,
+            headers={"Access-Control-Allow-Origin": "*"}
+        )
+    
     try:
-        # Manual validation
-        if "query" not in request_body:
-            raise HTTPException(status_code=400, detail="query field is required")
-        if not isinstance(request_body["query"], str):
-            raise HTTPException(status_code=400, detail="query must be a string")
-        if "session_id" not in request_body:
-            raise HTTPException(status_code=400, detail="session_id field is required")
-
-        query = request_body["query"]
-        session_id = request_body["session_id"]
-
-        print(f"Processing request - query: {query}, session_id: {session_id}")
-
+        # Parse JSON body
+        try:
+            data = await request.json()
+        except JSONDecodeError:
+            return JSONResponse(
+                content={"error": "Invalid JSON format"},
+                status_code=400,
+                headers={"Access-Control-Allow-Origin": "*"}
+            )
+        
+        # Validate fields
+        if not data.get("query"):
+            return JSONResponse(
+                content={"error": "query field is required"},
+                status_code=400,
+                headers={"Access-Control-Allow-Origin": "*"}
+            )
+        
+        query = data["query"]
+        session_id = data.get("session_id")
+        
+        print(f"Processing chat request - query: {query}, session_id: {session_id}")
+        
         chatbot = RAGChatbot()
-
+        
         if session_id == "first_session":
             print("First session, resetting conversation")
             session_id = None
             chatbot._delete_conversation_db()
-
+        
         response = chatbot.chat(query)
         print(f"Generated response: {response}")
-
-        return {
-            "response": response,
-            "session_id": session_id,
-        }
-    except HTTPException as he:
-        print(f"HTTP Exception in rag_chat: {str(he)}")
-        raise he
+        
+        return JSONResponse(
+            content={
+                "response": response,
+                "session_id": session_id
+            },
+            headers={"Access-Control-Allow-Origin": "*"}
+        )
+        
     except Exception as e:
-        print(f"Unexpected error in rag_chat: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error in rag_chat: {str(e)}")
+        return JSONResponse(
+            content={"error": str(e)},
+            status_code=500,
+            headers={"Access-Control-Allow-Origin": "*"}
+        )
 
 if __name__ == "__main__":
     import uvicorn
