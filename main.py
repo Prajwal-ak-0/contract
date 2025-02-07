@@ -24,8 +24,9 @@ import json
 def get_cors_headers():
     return {
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "*",
-        "Access-Control-Allow-Headers": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Max-Age": "86400",
     }
 
 # Initialize FastAPI app
@@ -35,9 +36,10 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 logging.basicConfig(
     level=logging.INFO,
@@ -435,12 +437,7 @@ async def update_field(request: UpdateFieldRequest):
         print(f"Error updating field: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.options("/rag-chat")
-async def options_rag_chat():
-    return JSONResponse(
-        content={"message": "OK"},
-        headers=get_cors_headers()
-    )
+
 
 @app.post("/rag-chat")
 async def rag_chat(request: ChatRequest):
