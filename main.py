@@ -428,6 +428,17 @@ async def update_field(request: UpdateFieldRequest):
         print(f"Error updating field: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.options("/rag-chat")
+async def options_rag_chat():
+    return JSONResponse(
+        content={"message": "OK"},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        },
+    )
+
 @app.post("/rag-chat")
 async def rag_chat(request: ChatRequest):
     try:
