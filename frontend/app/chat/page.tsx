@@ -115,13 +115,14 @@ export default function RagChatPage() {
       const data = await response.json();
       console.log('Received response:', data);
       
-      if (data.response) {
-        setSessionId(data.session_id || sessionId);
+      if (data.response && data.response.answer) {
+        setSessionId(data.response.session_id || sessionId);
         setMessages(prev => [
           ...prev,
           {
-            content: data.response,
-            role: "assistant"
+            content: data.response.answer,
+            role: "assistant",
+            confidence: data.response.confidence
           }
         ]);
       }
