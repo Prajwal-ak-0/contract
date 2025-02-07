@@ -23,31 +23,21 @@ import json
 # Common CORS headers for all responses
 def get_cors_headers():
     return {
-        "Access-Control-Allow-Origin": "https://contract-blond.vercel.app",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-        "Access-Control-Allow-Credentials": "true",
-        "Access-Control-Max-Age": "3600",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "*",
+        "Access-Control-Allow-Headers": "*",
     }
 
 # Initialize FastAPI app
 app = FastAPI()
 
 # Configure CORS middleware
-origins = [
-    "https://contract-blond.vercel.app",  # Production frontend URL
-    "http://localhost:3000",  # Local development
-    "http://127.0.0.1:3000",
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
-    max_age=3600,
 )
 logging.basicConfig(
     level=logging.INFO,
