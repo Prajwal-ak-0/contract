@@ -24,9 +24,8 @@ import json
 def get_cors_headers():
     return {
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-        "Access-Control-Max-Age": "86400",
+        "Access-Control-Allow-Methods": "*",
+        "Access-Control-Allow-Headers": "*",
     }
 
 # Initialize FastAPI app
@@ -38,7 +37,8 @@ app.add_middleware(
     allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
+    max_age=86400
 )
 logging.basicConfig(
     level=logging.INFO,
@@ -75,7 +75,7 @@ class EditValueRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     query: str
-    session_id: str
+    session_id: str | None = None
 
 class UpdateFieldRequest(BaseModel):
     db_id: int
@@ -441,28 +441,25 @@ async def update_field(request: UpdateFieldRequest):
 @app.post("/rag-chat")
 async def rag_chat(request: ChatRequest):
     try:
-        query = request.query
-        session_id = request.session_id
+        if not request.query:
+            raise HTTPException(status_code=400, detail="Query is required")
 
         chatbot = RAGChatbot()
+        session_id = request.session_id
 
         if session_id == "first_session":
             print("First session")
             session_id = None
             chatbot._delete_conversation_db()
 
-        print(f"Received chat query for session {session_id}: {query}")
+        print(f"Received chat query for session {session_id}: {request.query}")
         
-        response = chatbot.chat(query)
+        response = chatbot.chat(request.query)
 
-        final_response = {
+        return {
             "response": response,
             "session_id": session_id,
         }
-
-        print("Final response: ", final_response)
-
-        return final_response
         
     except Exception as e:
         print(f"Error in rag_chat: {str(e)}")
