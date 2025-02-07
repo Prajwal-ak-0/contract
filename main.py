@@ -24,12 +24,16 @@ import json
 app = FastAPI()
 
 # Configure CORS middleware
+origins = ["*"]  # For development, in production specify your frontend URL
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific frontend origin
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,
 )
 logging.basicConfig(
     level=logging.INFO,
@@ -435,12 +439,22 @@ async def options_rag_chat():
         headers={
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Max-Age": "3600",
         },
     )
 
 @app.post("/rag-chat")
 async def rag_chat(request: ChatRequest):
+    # Add CORS headers to the response
+    headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "*",
+        "Access-Control-Allow-Credentials": "true",
+    }
+    
     try:
         query = request.query
         session_id = request.session_id
@@ -465,7 +479,10 @@ async def rag_chat(request: ChatRequest):
 
         print("Final response: ", final_response)
 
-        return final_response
+        return JSONResponse(
+            content=final_response,
+            headers=headers
+        )
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
