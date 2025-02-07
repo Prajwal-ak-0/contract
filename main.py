@@ -1,6 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 from json.decoder import JSONDecodeError
@@ -94,11 +94,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-# Configure CORS with specific origins
-origins = [
-    "http://localhost:3000",    # Next.js development server
-    "http://localhost:8000",    # FastAPI server
-]
+
 
 app.add_middleware(
     CORSMiddleware,
