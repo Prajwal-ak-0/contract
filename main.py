@@ -36,10 +36,9 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-    expose_headers=["*"]
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"]
 )
 logging.basicConfig(
     level=logging.INFO,
@@ -302,7 +301,7 @@ def msa_transform_response(response: list) -> list:
 @app.get("/")
 async def root():
     return JSONResponse(
-        content={"message": "Contract Extraction API v2 - CORS Update 2025-02-07 09:45"},
+        content={"message": "Contract Extraction API v2 - CORS Update 2025-02-07 10:16"},
         headers=get_cors_headers()
     )
 
@@ -441,7 +440,6 @@ async def update_field(request: UpdateFieldRequest):
 
 @app.post("/rag-chat")
 async def rag_chat(request: ChatRequest):
-    
     try:
         query = request.query
         session_id = request.session_id
@@ -453,10 +451,8 @@ async def rag_chat(request: ChatRequest):
             session_id = None
             chatbot._delete_conversation_db()
 
-
         print(f"Received chat query for session {session_id}: {query}")
         
-
         response = chatbot.chat(query)
 
         final_response = {
@@ -466,18 +462,11 @@ async def rag_chat(request: ChatRequest):
 
         print("Final response: ", final_response)
 
-        return JSONResponse(
-            content=final_response,
-            headers=get_cors_headers()
-        )
+        return final_response
         
     except Exception as e:
         print(f"Error in rag_chat: {str(e)}")
-        return JSONResponse(
-            content={"detail": str(e)},
-            status_code=500,
-            headers=get_cors_headers()
-        )
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
