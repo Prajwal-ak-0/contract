@@ -99,15 +99,15 @@ export default function RagChatPage() {
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       
       const data = await response.json();
+      console.log('Received response:', data);
+      
       if (data.response) {
-        setSessionId(data.response.session_id);
+        setSessionId(data.session_id || sessionId);
         setMessages(prev => [
           ...prev,
           {
-            content: data.response.answer.replace(/\n/g, "\n\n"),
-            role: "assistant",
-            confidence: data.response.confidence,
-            reasoning: data.response.reasoning,
+            content: data.response,
+            role: "assistant"
           }
         ]);
       }

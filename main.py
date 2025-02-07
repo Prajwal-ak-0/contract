@@ -73,9 +73,7 @@ class EditValueRequest(BaseModel):
     field_name: str
     updated_value: str
 
-class ChatRequest(BaseModel):
-    query: str
-    session_id: str | None = None
+# Removing Pydantic model temporarily for debugging
 
 class UpdateFieldRequest(BaseModel):
     db_id: int
@@ -439,30 +437,41 @@ async def update_field(request: UpdateFieldRequest):
 
 
 @app.post("/rag-chat")
-async def rag_chat(request: ChatRequest):
+async def rag_chat(request_body: dict):
+    print("Received request body:", request_body)
     try:
-        if not request.query:
-            raise HTTPException(status_code=400, detail="Query is required")
+        # Manual validation
+        if "query" not in request_body:
+            raise HTTPException(status_code=400, detail="query field is required")
+        if not isinstance(request_body["query"], str):
+            raise HTTPException(status_code=400, detail="query must be a string")
+        if "session_id" not in request_body:
+            raise HTTPException(status_code=400, detail="session_id field is required")
+
+        query = request_body["query"]
+        session_id = request_body["session_id"]
+
+        print(f"Processing request - query: {query}, session_id: {session_id}")
 
         chatbot = RAGChatbot()
-        session_id = request.session_id
 
         if session_id == "first_session":
-            print("First session")
+            print("First session, resetting conversation")
             session_id = None
             chatbot._delete_conversation_db()
 
-        print(f"Received chat query for session {session_id}: {request.query}")
-        
-        response = chatbot.chat(request.query)
+        response = chatbot.chat(query)
+        print(f"Generated response: {response}")
 
         return {
             "response": response,
             "session_id": session_id,
         }
-        
+    except HTTPException as he:
+        print(f"HTTP Exception in rag_chat: {str(he)}")
+        raise he
     except Exception as e:
-        print(f"Error in rag_chat: {str(e)}")
+        print(f"Unexpected error in rag_chat: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
