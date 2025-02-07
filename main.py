@@ -20,11 +20,25 @@ import json
 
 # Configure logging
 
+# Common CORS headers for all responses
+def get_cors_headers():
+    return {
+        "Access-Control-Allow-Origin": "https://contract-blond.vercel.app",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Max-Age": "3600",
+    }
+
 # Initialize FastAPI app
 app = FastAPI()
 
 # Configure CORS middleware
-origins = ["*"]  # For development, in production specify your frontend URL
+origins = [
+    "https://contract-blond.vercel.app",  # Production frontend URL
+    "http://localhost:3000",  # Local development
+    "http://127.0.0.1:3000",
+]
 
 app.add_middleware(
     CORSMiddleware,
@@ -295,18 +309,17 @@ def msa_transform_response(response: list) -> list:
 
 @app.get("/")
 async def root():
-    return {"message": "Contract Extraction API is running"}
+    return JSONResponse(
+        content={"message": "Contract Extraction API v2 - CORS Update 2025-02-07 09:45"},
+        headers=get_cors_headers()
+    )
 
 @app.options("/upload")
 async def options_upload():
     """Handle preflight requests for the upload endpoint"""
     return JSONResponse(
-        content={},
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
-        }
+        content={"message": "OK"},
+        headers=get_cors_headers()
     )
 
 @app.post("/upload")
@@ -436,24 +449,11 @@ async def update_field(request: UpdateFieldRequest):
 async def options_rag_chat():
     return JSONResponse(
         content={"message": "OK"},
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization",
-            "Access-Control-Allow-Credentials": "true",
-            "Access-Control-Max-Age": "3600",
-        },
+        headers=get_cors_headers()
     )
 
 @app.post("/rag-chat")
 async def rag_chat(request: ChatRequest):
-    # Add CORS headers to the response
-    headers = {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "*",
-        "Access-Control-Allow-Credentials": "true",
-    }
     
     try:
         query = request.query
@@ -481,7 +481,7 @@ async def rag_chat(request: ChatRequest):
 
         return JSONResponse(
             content=final_response,
-            headers=headers
+            headers=get_cors_headers()
         )
         
     except Exception as e:
