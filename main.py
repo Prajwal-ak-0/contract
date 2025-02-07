@@ -38,38 +38,49 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=False,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
     max_age=86400
 )
+
+# Add OPTIONS endpoint for /rag-chat
+@app.options("/rag-chat")
+async def options_rag_chat():
+    return Response(
+        content="",
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Max-Age": "86400"
+        }
+    )
 
 # Add error handling middleware
 @app.middleware("http")
 async def error_handling_middleware(request: Request, call_next):
     try:
-        if request.method == "OPTIONS":
-            return JSONResponse(
-                content={"status": "ok"},
-                headers={
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-                    "Access-Control-Allow-Headers": "*",
-                    "Access-Control-Max-Age": "86400"
-                }
-            )
-        
         response = await call_next(request)
         
         # Ensure CORS headers are present in all responses
-        if not response.headers.get("Access-Control-Allow-Origin"):
+        if "Access-Control-Allow-Origin" not in response.headers:
             response.headers["Access-Control-Allow-Origin"] = "*"
+        if "Access-Control-Allow-Methods" not in response.headers:
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        if "Access-Control-Allow-Headers" not in response.headers:
+            response.headers["Access-Control-Allow-Headers"] = "*"
         
         return response
     except Exception as e:
         return JSONResponse(
             status_code=500,
             content={"error": str(e)},
-            headers={"Access-Control-Allow-Origin": "*"}
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                "Access-Control-Allow-Headers": "*"
+            }
         )
 logging.basicConfig(
     level=logging.INFO,
