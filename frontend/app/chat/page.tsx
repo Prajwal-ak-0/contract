@@ -93,7 +93,7 @@ export default function RagChatPage() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      const response = await fetch("https://contract-backend-965571980615.us-central1.run.app/rag-chat", {
+      const response = await fetch("https://contract-50656497197.us-central1.run.app/rag-chat", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
