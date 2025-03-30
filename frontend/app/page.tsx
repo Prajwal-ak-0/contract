@@ -106,7 +106,7 @@ export default function ContractPage() {
 
         window.localStorage.removeItem('dbId');
 
-        const response = await fetch("https://contract-backend-965571980615.us-central1.run.app/upload", {
+        const response = await fetch("https://contract-50656497197.us-central1.run.app/upload", {
           method: "POST",
           body: uploadFormData,
           mode: "cors",
