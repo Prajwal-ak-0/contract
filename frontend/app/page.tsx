@@ -1,307 +1,257 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import * as XLSX from "xlsx";
-import { Separator } from "@/components/ui/separator";
-import PDFViewer from "@/components/PDFViewer";
-import FileUpload from "@/components/FileUpload";
-import ContractDataTable from "@/components/ContractDataTable";
-import LoadingSpinner from "@/components/loaders/LoadingSpinner";
+import Link from "next/link";
+import { 
+  ArrowRight, 
+  FileText, 
+  MessageSquare, 
+  Zap,
+  PieChart,
+  Database,
+  MousePointer,
+  Edit,
+  ExternalLink,
+  HelpCircle,
+  AlertCircle
+} from "lucide-react";
 
-type ApiData = Record<string, string>;
-
-interface ExtractedDataItem {
-  field: string;
-  value: string;
-  page_number: string;
-  confidence?: number;
-  reasoning?: string;
-  proof?: string;
-}
-
-export default function ContractPage() {
-  const [apiData, setApiData] = useState<ApiData>({});
-  const [fieldPageMapping, setFieldPageMapping] = useState<Record<string, string>>({});
-  const [fieldConfidence, setFieldConfidence] = useState<Record<string, number>>({});
-  const [fieldReasoning, setFieldReasoning] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
-
-  const [file, setFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isDownloadReady, setIsDownloadReady] = useState(false);
-  const [excelFile, setExcelFile] = useState<Blob | null>(null);
-  const [pdfType, setPdfType] = useState("SOW");
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [showPdfViewer, setShowPdfViewer] = useState(false);
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [editingField, setEditingField] = useState<{ name: string; value: string; page: number } | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isFileUploaded, setIsFileUploaded] = useState(false)
-  const closeDialogRef = useRef<HTMLButtonElement>(null);
-
-  const sowFields = [
-    "client_company_name",
-    "currency",
-    "sow_start_date",
-    "sow_end_date",
-    "cola",
-    "credit_period",
-    "inclusive_or_exclusive_gst",
-    "sow_value",
-    "sow_no",
-    "type_of_billing",
-    "po_number",
-    "amendment_no",
-    "billing_unit_type_and_rate_cost",
-    "particular_role_rate",
-  ];
-
-  const msaFields = [
-    "client_company_name",
-    "currency",
-    "msa_start_date",
-    "msa_end_date",
-    "info_security",
-    "limitation_of_liability",
-    "data_processing_agreement",
-    "insurance_required",
-    "type_of_insurance_required",
-    "is_cyber_insurance_required",
-    "cyber_insurance_amount",
-    "is_workman_compensation_insurance_required",
-    "workman_compensation_insurance_amount",
-    "other_insurance_required",
-    "other_insurance_amount"
-  ];
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const selectedFile = e.target.files[0];
-      setFile(selectedFile);
-      setPdfFile(selectedFile);
-      setShowPdfViewer(true);
-      setIsDownloadReady(false);
-      setApiData({});
-      setFieldPageMapping({});
-    }
-  };
-
-  const handlePdfTypeChange = (value: string) => {
-    setPdfType(value);
-    setApiData({});
-    setFieldPageMapping({});
-  };
-
-  const handleFileUpload = async () => {
-    if (file) {
-      setIsUploading(true);
-      try {
-        const uploadFormData = new FormData();
-        uploadFormData.append("file", file);
-        uploadFormData.append("pdfType", pdfType);
-        
-        setLoading(true);
-
-        window.localStorage.removeItem('dbId');
-
-        const response = await fetch("https://contract-50656497197.us-central1.run.app/upload", {
-          method: "POST",
-          body: uploadFormData,
-          mode: "cors",
-          credentials: "omit",
-          headers: {
-            "Accept": "application/json",
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        console.log("Response from server:", result);
-        setIsFileUploaded(true);
-        
-        // Store dbId in localStorage
-        if (result.db_id) {
-          window.localStorage.setItem('dbId', result.db_id.toString());
-        }
-        
-        const extractedData = result.extracted_data as ExtractedDataItem[];
-        
-        // Initialize all our data objects
-        const newApiData: ApiData = {};
-        const newFieldPageMapping: Record<string, string> = {};
-        const newFieldConfidence: Record<string, number> = {};
-        const newFieldReasoning: Record<string, string> = {};
-
-        // Process all data from the response
-        extractedData.forEach(item => {
-          console.log('Processing item:', item);  
-          newApiData[item.field] = item.value || "";
-          newFieldPageMapping[item.field] = item.page_number || "0";
-          if (item.confidence !== undefined) {
-            newFieldConfidence[item.field] = Number(item.confidence);
-          }
-          if (item.reasoning) {
-            newFieldReasoning[item.field] = item.reasoning;
-          }
-        });
-
-        // Update all our states
-        setApiData(newApiData);
-        setFieldPageMapping(newFieldPageMapping);
-        setFieldConfidence(newFieldConfidence);
-        setFieldReasoning(newFieldReasoning);
-
-        // Create Excel file
-        const allData = { ...newApiData };
-        const ws = XLSX.utils.json_to_sheet([allData]);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Contract Data");
-
-        const excelBlob = new Blob(
-          [XLSX.write(wb, { bookType: "xlsx", type: "array" })],
-          { type: "application/octet-stream" }
-        );
-        setExcelFile(excelBlob);
-
-        setIsDownloadReady(true);
-        setLoading(false);
-        toast.success("File uploaded successfully");
-      } catch (error) {
-        console.error("Error uploading file:", error);
-        if (error instanceof TypeError && error.message.includes("NetworkError")) {
-          toast.error("Network error. Please check your connection and try again.");
-        } else {
-          toast.error(`An error occurred while uploading the file: ${(error as Error).message || "Unknown error"}`);
-        }
-      } finally {
-        setIsUploading(false);
-      }
-    }
-  };
-
-  const handleDownload = () => {
-    if (excelFile) {
-      const url = URL.createObjectURL(excelFile);
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", "Contract_Report.xlsx");
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      toast.success("Excel file downloaded successfully");
-    }
-  };
-
-  const handleEditField = (field: { name: string; value: string; page: number }) => {
-    console.log('Editing field:', field);  
-    setEditingField(field);
-    setIsDialogOpen(true);
-  };
-
-  const handleSaveEdit = (name: string, newValue: string, newPage: string) => {
-    console.log('Saving edit:', { name, newValue, newPage });  
-    setApiData((prev) => ({
-      ...prev,
-      [name]: newValue,
-    }));
-    setFieldPageMapping((prev) => ({
-      ...prev,
-      [name]: newPage,
-    }));
-    setIsDialogOpen(false);
-  };
-
-  const handleFieldClick = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  const closePdfViewer = () => {
-    setShowPdfViewer(false);
-  };
-
-  const fields = [
-    ...((pdfType === "SOW" ? sowFields : msaFields).map((field) => {
-      const pageNum = fieldPageMapping[field];
-      console.log(`Field ${field} page mapping:`, pageNum);  
-      return {
-        name: field,
-        page: pageNum ? parseInt(pageNum) || 0 : 0,
-        value: apiData[field] || "",
-      };
-    })),
-  ];
-
+export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-white">
-      {loading && <LoadingSpinner />}
-      <main className="max-w-8xl mx-auto">
-        <div className="px-4 sm:px-0">
-          <div className="flex flex-col lg:flex-row">
-            <div
-              className={`w-full ${
-                showPdfViewer ? "lg:w-1/2" : ""
-              } bg-white shadow overflow-hidden sm:rounded-lg mb-6 lg:mb-0 ${
-                showPdfViewer ? "lg:mr-4" : ""
-              }`}
-            >
-              <div className={`px-4 sm:p-6 ${loading ? 'opacity-60' : ''}`}>
-                <div className="w-1/2">
-                  <FileUpload
-                    handleFileChange={handleFileChange}
-                    pdfType={pdfType}
-                    handlePdfTypeChange={handlePdfTypeChange}
-                    handleFileUpload={handleFileUpload}
-                    file={file}
-                    isUploading={isUploading}
-                    isFileUploaded={isFileUploaded}
-                  />
-                </div>
-
-                <Separator className="my-8" />
-
-                {fields.length > 2 && (
-                  <ContractDataTable
-                    fields={fields}
-                    docType={pdfType}
-                    handleEditField={handleEditField}
-                    handleSaveEdit={handleSaveEdit}
-                    editingField={editingField}
-                    setEditingField={setEditingField}
-                    isDialogOpen={isDialogOpen}
-                    setIsDialogOpen={setIsDialogOpen}
-                    closeDialogRef={closeDialogRef}
-                    onFieldClick={handleFieldClick}
-                    fieldConfidence={fieldConfidence}
-                    fieldReasoning={fieldReasoning}
-                  />
-                )}
-
-                {isDownloadReady && (
-                  <div className="mt-8">
-                    <Button onClick={handleDownload}>Download Excel</Button>
-                  </div>
-                )}
-              </div>
+    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
+      {/* Hero Section with consistent styling */}
+      <section className="w-full py-20 md:py-28 lg:py-36 relative overflow-hidden">
+        <div className="container px-4 md:px-6 mx-auto">
+          <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
+            <div className="mb-8">
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tighter text-black mb-8 leading-tight">
+                Intelligent Contract Analysis
+              </h1>
+              <p className="text-xl md:text-2xl text-gray-700 max-w-3xl mx-auto mt-6">
+                Extract key information, analyze terms, and get AI-powered insights from your contracts in seconds.
+              </p>
             </div>
 
-            {showPdfViewer && pdfFile && (
-              <div className={`w-full lg:w-1/2 ${loading ? 'opacity-50' : ''}`}>
-                <PDFViewer
-                  file={pdfFile}
-                  currentPage={currentPage}
-                  setCurrentPage={setCurrentPage}
-                  onClose={closePdfViewer}
-                />
+            {/* Clean Feature Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 my-10 w-full max-w-4xl">
+              {[
+                { text: "SOW Analysis", icon: <FileText className="mb-2 h-6 w-6" /> },
+                { text: "Term Extraction", icon: <Database className="mb-2 h-6 w-6" /> },
+                { text: "Data Visualization", icon: <PieChart className="mb-2 h-6 w-6" /> },
+                { text: "Excel Export", icon: <ExternalLink className="mb-2 h-6 w-6" /> },
+              ].map((item, i) => (
+                <div
+                  key={i}
+                  className="flex flex-col items-center justify-center p-4 bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200 text-black"
+                >
+                  {item.icon}
+                  <span className="font-medium">{item.text}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md mx-auto">
+              <Link href="/contract" className="w-full">
+                <Button className="w-full h-14 px-8 text-base font-medium bg-black text-white hover:bg-gray-800 transition-all duration-200 shadow-lg">
+                  Upload Contract <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+              <div className="relative w-full group">
+                <Button 
+                  className="w-full h-14 px-8 text-base font-medium bg-gray-300 text-gray-700 cursor-not-allowed opacity-80 shadow-lg"
+                  disabled
+                >
+                  AI Chat <AlertCircle className="ml-2 h-5 w-5" />
+                </Button>
+                <div className="absolute -top-10 left-0 right-0 bg-black text-white p-2 rounded text-sm text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  Please upload a contract document first
+                </div>
               </div>
-            )}
+            </div>
           </div>
         </div>
-      </main>
+      </section>
+
+      {/* How It Works - Simple 3-Step Process */}
+      <section className="w-full py-20 bg-white border-t border-gray-100">
+        <div className="container px-4 md:px-6 mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-black mb-4">
+              How It Works
+            </h2>
+            <p className="text-xl text-gray-700 max-w-2xl mx-auto">
+              Our simple 3-step process makes contract analysis effortless
+            </p>
+          </div>
+
+          <div className="max-w-5xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {[
+                {
+                  step: "1",
+                  title: "Upload Contract",
+                  description: "Upload your PDF contract document to our secure platform",
+                  icon: <Database className="h-8 w-8" />
+                },
+                {
+                  step: "2",
+                  title: "Automatic Analysis",
+                  description: "Our AI extracts key terms, dates, amounts and other critical information",
+                  icon: <Zap className="h-8 w-8" />
+                },
+                {
+                  step: "3",
+                  title: "Review and Export",
+                  description: "Review the extracted data, chat with AI, and download your report",
+                  icon: <FileText className="h-8 w-8" />
+                }
+              ].map((item, index) => (
+                <div
+                  key={index}
+                  className="flex flex-col items-center text-center p-6 bg-gray-50 rounded-xl hover:shadow-md transition-all duration-200"
+                >
+                  <div className="flex items-center justify-center w-14 h-14 rounded-full bg-black text-white shadow-lg mb-4">
+                    {item.icon}
+                  </div>
+                  <h3 className="text-xl font-bold text-black mb-2">{item.title}</h3>
+                  <p className="text-gray-700">{item.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* User Guide Table */}
+      <section className="w-full py-20 bg-gray-50 border-t border-gray-100">
+        <div className="container px-4 md:px-6 mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-black mb-4">
+              Features Guide
+            </h2>
+            <p className="text-xl text-gray-700 max-w-2xl mx-auto">
+              Key capabilities to help you analyze contracts efficiently
+            </p>
+          </div>
+
+          <div className="max-w-5xl mx-auto bg-white rounded-xl shadow-md overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-black text-white">
+                  <tr>
+                    <th className="py-4 px-6 text-left">Feature</th>
+                    <th className="py-4 px-6 text-left">Description</th>
+                    <th className="py-4 px-6 text-left">How to Use</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 text-black">
+                  <tr className="hover:bg-gray-50">
+                    <td className="py-4 px-6 font-medium flex items-center">
+                      <MousePointer className="h-5 w-5 inline mr-2" />
+                      Field Navigation
+                    </td>
+                    <td className="py-4 px-6">
+                      Click on any field row to navigate to the specific page in the PDF
+                    </td>
+                    <td className="py-4 px-6 text-gray-800">
+                      Click any row in the data table to jump to the relevant page
+                    </td>
+                  </tr>
+                  <tr className="hover:bg-gray-50">
+                    <td className="py-4 px-6 font-medium flex items-center">
+                      <HelpCircle className="h-5 w-5 inline mr-2" />
+                      Field Information
+                    </td>
+                    <td className="py-4 px-6">
+                      Hover over field names to see detailed reasoning
+                    </td>
+                    <td className="py-4 px-6 text-gray-800">
+                      Move your cursor over any field name to view AI reasoning
+                    </td>
+                  </tr>
+                  <tr className="hover:bg-gray-50">
+                    <td className="py-4 px-6 font-medium flex items-center">
+                      <Edit className="h-5 w-5 inline mr-2" />
+                      Edit Data
+                    </td>
+                    <td className="py-4 px-6">
+                      Edit extracted field values if corrections are needed
+                    </td>
+                    <td className="py-4 px-6 text-gray-800">
+                      Click the edit button on any row to modify the value
+                    </td>
+                  </tr>
+                  <tr className="hover:bg-gray-50">
+                    <td className="py-4 px-6 font-medium flex items-center">
+                      <ExternalLink className="h-5 w-5 inline mr-2" />
+                      Export Data
+                    </td>
+                    <td className="py-4 px-6">
+                      Download all extracted contract data as an Excel spreadsheet
+                    </td>
+                    <td className="py-4 px-6 text-gray-800">
+                      Click the &quot;Download Excel Report&quot; button
+                    </td>
+                  </tr>
+                  <tr className="hover:bg-gray-50">
+                    <td className="py-4 px-6 font-medium flex items-center">
+                      <MessageSquare className="h-5 w-5 inline mr-2" />
+                      AI Chat
+                    </td>
+                    <td className="py-4 px-6">
+                      Chat with an AI about your contract to get insights
+                    </td>
+                    <td className="py-4 px-6 text-gray-800">
+                      After uploading a contract, click the &quot;Chat with AI&quot; button
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="w-full py-20 bg-black text-white">
+        <div className="container px-4 md:px-6 mx-auto">
+          <div className="flex flex-col items-center text-center max-w-3xl mx-auto">
+            <div className="mb-8">
+              <h2 className="text-4xl font-bold mb-6">
+                Ready to Streamline Your Contract Analysis?
+              </h2>
+              <p className="text-xl text-gray-200 max-w-2xl mx-auto">
+                Start extracting valuable insights from your contracts today
+              </p>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md mx-auto">
+              <Link href="/contract" className="w-full">
+                <Button className="w-full h-14 px-8 text-lg font-medium bg-white text-black hover:bg-gray-100 transition-all duration-200">
+                  Get Started <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="w-full py-8 bg-white border-t border-gray-200">
+        <div className="container px-4 md:px-6 mx-auto">
+          <div className="flex flex-col md:flex-row items-center justify-between">
+            <p className="text-gray-800 mb-4 md:mb-0">
+              © {new Date().getFullYear()} Contract Analysis System
+            </p>
+            <div className="flex space-x-8">
+              <Link href="/contract" className="text-gray-800 hover:text-black transition-colors">
+                Upload Contract
+              </Link>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

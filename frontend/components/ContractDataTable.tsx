@@ -10,7 +10,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Pen } from "lucide-react";
 import { RiAiGenerate2 } from "react-icons/ri";
-import { Badge } from "@/components/ui/badge";
 import {
   HoverCard,
   HoverCardContent,
@@ -22,7 +21,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogClose,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -43,9 +41,7 @@ interface ContractDataTableProps {
   setEditingField: React.Dispatch<React.SetStateAction<Field | null>>;
   isDialogOpen: boolean;
   setIsDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  closeDialogRef: React.RefObject<HTMLButtonElement>;
   onFieldClick: (page: number) => void;
-  fieldConfidence?: Record<string, number>;
   fieldReasoning?: Record<string, string>;
 }
 
@@ -56,12 +52,6 @@ interface StoredFieldData {
   page_number: number;
 }
 
-const getConfidenceBadgeColor = (confidence: number) => {
-  if (confidence >= 8) return "bg-green-500 hover:bg-green-600";
-  if (confidence >= 5) return "bg-yellow-500 hover:bg-yellow-600";
-  return "bg-red-500 hover:bg-red-600";
-};
-
 const ContractDataTable: React.FC<ContractDataTableProps> = ({
   fields,
   docType,
@@ -70,9 +60,7 @@ const ContractDataTable: React.FC<ContractDataTableProps> = ({
   editingField,
   isDialogOpen,
   setIsDialogOpen,
-  closeDialogRef,
   onFieldClick,
-  fieldConfidence,
   fieldReasoning,
 }) => {
   const [editValue, setEditValue] = React.useState("");
@@ -141,7 +129,6 @@ const ContractDataTable: React.FC<ContractDataTableProps> = ({
             <TableHead>Field Name</TableHead>
             <TableHead>Value</TableHead>
             <TableHead>Page</TableHead>
-            <TableHead>Confidence</TableHead>
             <TableHead>Action</TableHead>
             <TableHead>AI Verify</TableHead>
           </TableRow>
@@ -178,17 +165,6 @@ const ContractDataTable: React.FC<ContractDataTableProps> = ({
               </TableCell>
               <TableCell className="text-lg">
                 {field.page > 0 ? field.page : "N/A"}
-              </TableCell>
-              <TableCell>
-                {fieldConfidence?.[field.name] !== undefined && (
-                  <Badge
-                    className={`${getConfidenceBadgeColor(
-                      fieldConfidence[field.name]
-                    )} text-white transition-colors`}
-                  >
-                    {fieldConfidence[field.name]}
-                  </Badge>
-                )}
               </TableCell>
               <TableCell>
                 <Button
@@ -277,7 +253,6 @@ const ContractDataTable: React.FC<ContractDataTableProps> = ({
               <Button type="submit">Save changes</Button>
             </DialogFooter>
           </form>
-          <DialogClose className="text-black" ref={closeDialogRef} />
         </DialogContent>
       </Dialog>
     </div>
