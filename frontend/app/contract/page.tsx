@@ -28,7 +28,7 @@ export default function ContractPage() {
 
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [isDownloadReady, setIsDownloadReady] = useState(false);
+  const [, setIsDownloadReady] = useState(false);
   const [excelFile, setExcelFile] = useState<Blob | null>(null);
   const [pdfType, setPdfType] = useState("SOW");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
